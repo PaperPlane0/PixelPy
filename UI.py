@@ -195,6 +195,7 @@ class Canvas(UIItem):
             elif callable(brush):
                 brush(self, row, col, color)
         else:
+            history_obj = []
             startrow = max((row - size[1] // 2), 0)
             endrow = min((row + size[1] // 2), self.rows - 1)
             startcol = max((col - size[0] // 2), 0)
@@ -205,8 +206,9 @@ class Canvas(UIItem):
             for i in range(startrow, endrow + 1):
                 for j in range(startcol, endcol + 1):
                     if self.table[i][j].color != color:
-                        self.paint_history.append([{self.table[i][col]: self.table[i][j].color}])
+                        history_obj.append([{self.table[i][j]: self.table[i][j].color}])
                         self.table[i][j].color = color
+            self.paint_history.append(history_obj)
         if len(self.paint_history) > 100:
             self.paint_history.pop(0)
 
@@ -325,7 +327,7 @@ class UITooltip(UIItem):
         draw.line(surface, self.color, (self.title_x, self.title_y), (self.title_x + self.width, self.title_y))
         draw.line(surface, self.color, (self.title_x, self.title_y), (self.title_x, self.y))
         draw.line(surface, self.color, (self.title_x + self.width, self.title_y), (self.title_x + self.width, self.y))
-        hor_space, vert_space = self.width // self.cols, (self.height - self.title_h) // self.rows
+        hor_space, vert_space = self.col_size, self.row_size
         x, y = self.x, self.y
         for i in range(self.rows + 1):
             draw.line(surface, self.color, (x, y), (x + self.width, y))
@@ -334,8 +336,42 @@ class UITooltip(UIItem):
             draw.line(surface, self.color, (x, self.y), (x, y - self.row_size))
             x += hor_space
 
+    def update_item_sizes(self):
+        self.row_size = self.height // self.rows
+        self.col_size = self.width // self.cols
+        for row, line in enumerate(self.table):
+            for col, item in enumerate(line):
+                item.height = self.row_size - 3
+                item.width = self.col_size - 3
+                item.x = self.x + 2 + col * self.col_size
+                item.y = self.y + 2 + row * self.row_size
 
-    def add_item(self, row, col, item):
+    def set_table_size(self, rows1=0, cols1=0):
+        if rows1 == 0:
+            rows1 = self.rows
+        if cols1 == 0:
+            cols1 = self.cols
+        self.rows = rows1
+        self.cols = cols1
+        while len(self.table) < rows1:
+            self.table.append([None for i in range(self.cols)])
+            for i in range(self.cols):
+                self.set_item(-1, i, Rectangle(1, 1, 1, 1, white))
+
+        while len(self.table[0]) < cols1:
+            for i, line in enumerate(self.table):
+                line.append(None)
+                self.set_item(i, -1, Rectangle(1, 1, 1, 1, white))
+
+        while len(self.table) > rows1:
+            self.table.pop()
+
+        while len(self.table[0]) > cols1:
+            for line in self.table:
+                line.pop()
+        self.update_item_sizes()
+
+    def set_item(self, row, col, item):
         item.height = self.row_size - 3
         item.width = self.col_size - 3
         item.x = self.x + 2 + col * self.col_size

@@ -47,11 +47,11 @@ tool_square = 40
 tool_r, tool_c = 4, 3
 paint_tools_tooltip = UI.UITooltip(size_slider.x + size_slider.width + 10, 350, tool_square * tool_c, tool_square * tool_r, tool_r, tool_c, title_h=p_title_h, text=('tools', UI.black), font=('arial', 15))
 for i, item in enumerate(UI.icons):
-    paint_tools_tooltip.add_item(i // paint_tools_tooltip.cols, i % paint_tools_tooltip.cols, UI.UIButton(0, 0, 24, 24, image=item))
+    paint_tools_tooltip.set_item(i // paint_tools_tooltip.cols, i % paint_tools_tooltip.cols, UI.UIButton(0, 0, 24, 24, image=item))
 
 layers = [canvas]
 layer_square = 80
-layers_tooltip = UI.UITooltip(canvas_size[0] + canv_x + 20, 2, layer_square, layer_square, 1, 1, title_h=p_title_h, text=('layers', UI.black), font=('arial', 15))
+layers_tooltip = UI.UITooltip(canvas_size[0] + canv_x + 20, 2, int(layer_square * 1.5), layer_square, 1, 1, title_h=p_title_h, text=('layers', UI.black), font=('arial', 15))
 
 old_mouse_x, old_mouse_y, mouse_x, mouse_y = 0, 0, 0, 0
 draw_color = UI.black
@@ -59,7 +59,7 @@ draw_color = UI.black
 for i in range(0, len(UI.colors), 8):
     for col, color in enumerate(UI.colors[i:(i + 8)]):
         b_c = (*color, 255)
-        basic_color_tooltip.add_item((i // 8), col, UI.UIButton(0, 0, 20, 20, color=b_c))
+        basic_color_tooltip.set_item((i // 8), col, UI.UIButton(0, 0, 20, 20, color=b_c))
 
 selected_brush = pygame.image.load('brushes/circle16.png')
 brush = selected_brush
@@ -130,7 +130,9 @@ def loop():
                 size_slider.move_slider()
 
     brush_size = size_slider.value
-    layers_tooltip.rows = len(layers)
+    layers_tooltip.set_table_size(len(layers) + 1, 1)
+    layers_tooltip.set_item(0, 0, UI.UIButton(0, 0, 24, 24, image=pygame.image.load('icons/default_image.png')))
+    layers_tooltip.set_item(1, 0, UI.UIButton(0, 0, 24, 24, image=pygame.image.load('icons/default_image.png')))
     layers_tooltip.draw(screen)
     if canvas.mouse_down():
         canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color, size=(brush_size, brush_size), brush=brush)
