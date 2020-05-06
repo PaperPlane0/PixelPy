@@ -337,7 +337,7 @@ class UITooltip(UIItem):
             x += hor_space
 
     def update_item_sizes(self):
-        self.row_size = self.height // self.rows
+        self.row_size = (self.height - self.title_h) // self.rows
         self.col_size = self.width // self.cols
         for row, line in enumerate(self.table):
             for col, item in enumerate(line):
@@ -345,6 +345,8 @@ class UITooltip(UIItem):
                 item.width = self.col_size - 3
                 item.x = self.x + 2 + col * self.col_size
                 item.y = self.y + 2 + row * self.row_size
+                if isinstance(item, UITooltip):
+                    item.update_item_sizes()
 
     def set_table_size(self, rows1=0, cols1=0):
         if rows1 == 0:
@@ -371,11 +373,41 @@ class UITooltip(UIItem):
                 line.pop()
         self.update_item_sizes()
 
+    def get_item(self, row1, col1):
+        return self.table[row1][col1]
+
+    def append_item(self, item):
+        if not self.table or len([x for x in self.table[-1] if isinstance(x, Rectangle) or x is None]) == 0:
+            self.height += self.row_size
+            self.rows += 1
+            self.table.append([None for i in range(self.cols)])
+            self.set_item(-1, 0, item)
+            for i in range(1, self.cols):
+                self.set_item(-1, i, Rectangle(1, 1, 1, 1, white))
+        else:
+            occupied = len([x for x in self.table[-1] if isinstance(x, UIButton)])
+            self.set_item(-1, occupied, item)
+
+    def pop_item(self, index=-1, col=-1):
+        if self.table:
+            if len(self.table[-1]) == 1:
+                self.table.pop(index)
+                self.height -= self.row_size
+                self.rows -= 1
+                self.update_item_sizes()
+            else:
+                self.table[-1].pop(col)
+
     def set_item(self, row, col, item):
         item.height = self.row_size - 3
         item.width = self.col_size - 3
-        item.x = self.x + 2 + col * self.col_size
-        item.y = self.y + 2 + row * self.row_size
+        xcol, xrow = col, row
+        if col < 0:
+            xcol = xcol * -1 + 1
+        if row < 0:
+            xrow = xrow * -1 + 1
+        item.x = self.x + 2 + xcol * self.col_size
+        item.y = self.y + 2 + xrow * self.row_size
         self.table[row][col] = item
 
     def draw(self, surface):
