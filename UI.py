@@ -114,9 +114,11 @@ class UIItem:
                 fsize = min((self.height - 2), (self.width // len(self.text)))
             font = pygame.font.SysFont(self.font_name, fsize, bold=True)
             title = font.render(self.text, 0, self.text_col)
-            text_len = len(self.text) * (79 * fsize // 96) // 2
+            text_rect = title.get_rect()
+            text_len = text_rect.width
+            text_height = text_rect.height
             tx = (self.width - text_len) // 2
-            ty = (self.height - fsize) // 2
+            ty = (self.height - text_height) // 2
             surface.blit(title, (self.x + tx, self.y + ty))
 
 
@@ -308,12 +310,13 @@ class UISlider(UIItem):
 
 
 class UITooltip(UIItem):
-    def __init__(self, x, y, width, height, rows, cols, color=black, bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0)):
+    def __init__(self, x, y, width, height, rows, cols, color=black, bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0), show_grid=True):
         super().__init__(x, y + title_h, width, height + title_h, color=color)
         self.title_x = x
         self.title_y = y
         self.tinted = None
         self.clicked = None
+        self.show_grid = show_grid
         self.rows = rows
         self.cols = cols
         self.title_h = title_h
@@ -412,7 +415,8 @@ class UITooltip(UIItem):
 
     def draw(self, surface):
         self.title.draw(surface)
-        self.draw_grid(surface)
+        if self.show_grid:
+            self.draw_grid(surface)
         for row in self.table:
             for item in row:
                 item.draw(surface)

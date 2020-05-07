@@ -62,10 +62,12 @@ layer_square = 80
 layers_tooltip = UI.UITooltip(canvas_size[0] + canv_x + 20, 2, int(layer_square * 1.2), layer_square, 2, 1, title_h=p_title_h, text=('layers', UI.black), font=('arial', 15))
 
 layers_tooltip.set_item(0, 0, UI.UIButton(0, 0, layer_square, layer_square, image=pygame.image.load('icons/default_image.png')))
-layers_tooltip.set_item(1, 0, UI.UITooltip(0, 0, int(1.2 * layer_square) - 4, layer_square // 2 - 4, 1, 2))
+layers_tooltip.set_item(1, 0, UI.UITooltip(0, 0, int(1.2 * layer_square) - 4, layer_square // 2 - 4, 1, 2, show_grid=False))
 layer_buttons_tooltip = layers_tooltip.get_item(-1, 0)
 layer_buttons_tooltip.set_item(0, 0, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/visible.png')))
 layer_buttons_tooltip.set_item(0, 1, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/delete.png')))
+
+add_layer_button = UI.UIButton(layers_tooltip.x, layers_tooltip.y + layers_tooltip.height, layer_square + 15, 20, text=('+    add layer', UI.black), font=('arial', 15), image=pygame.image.load('icons/button_1.png'))
 
 
 old_mouse_x, old_mouse_y, mouse_x, mouse_y = 0, 0, 0, 0
@@ -141,13 +143,26 @@ def loop():
                             delete_button.color = UI.gray
                             if layers:
                                 if len(layers_tooltip.table) > 2:
-                                    layers_tooltip.pop_item(i, 0)
-                                    layers.pop((i - 1) // 2)
                                     layers_tooltip.pop_item(-1, 0)
+                                    layers_tooltip.pop_item(-1, 0)
+
+                                    layers.pop((i - 1) // 2)
+                                    
+                                    add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
                             obj.clicked = delete_button
                             break
                     else:
                         print(obj)
+            if add_layer_button.mouse_hover():
+                layers_tooltip.append_item(UI.UIButton(0, 0, layer_square, layer_square, image=pygame.image.load('icons/default_image.png')))
+                layers_tooltip.append_item(UI.UITooltip(0, 0, int(1.2 * layer_square) - 4, layer_square // 2 - 4, 1, 2, show_grid=False))
+                new_tooltip_element = layers_tooltip.get_item(-1, 0)
+                new_tooltip_element.set_item(0, 0, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/visible.png')))
+                new_tooltip_element.set_item(0, 1, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/delete.png')))
+                layers.append(new_canvas(canv_args))
+                layers_tooltip.update_item_sizes()
+                add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
+
         if event.type == pygame.MOUSEBUTTONUP:
             if basic_color_tooltip.clicked:
                 basic_color_tooltip.clicked.tint(False)
@@ -194,6 +209,7 @@ def loop():
     size_slider.draw(screen)
     paint_tools_tooltip.draw(screen)
     layers_tooltip.draw(screen)
+    add_layer_button.draw(screen)
     pygame.display.update()
     clock.tick(240)
 
