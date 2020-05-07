@@ -129,30 +129,33 @@ def loop():
                             button.tint(True, amt=20)
                             break
             if layers_tooltip.mouse_hover():
-                for i, obj in enumerate([o for o in [x[0] for x in layers_tooltip.table] if o.mouse_down()]):
-                    layers_tooltip.clicked = obj
-                    if isinstance(obj, UI.UIButton):
-                        curr_layer = i // 2
-                        obj.color = UI.gray
-                    elif isinstance(obj, UI.UITooltip):
-                        visibility_toggle_button = obj.table[0][0]
-                        delete_button = obj.table[0][1]
-                        if visibility_toggle_button.mouse_down():
-                            pass  # TODO: figure out how to make layers visible
-                        elif delete_button.mouse_down():
-                            delete_button.color = UI.gray
-                            if layers:
-                                if len(layers_tooltip.table) > 2:
-                                    layers_tooltip.pop_item(-1, 0)
-                                    layers_tooltip.pop_item(-1, 0)
+                for i, obj in enumerate([x[0] for x in layers_tooltip.table]):
+                    if obj.mouse_down():
+                        layers_tooltip.clicked = obj
+                        if isinstance(obj, UI.UIButton):
+                            curr_layer = i // 2
+                            obj.color = UI.gray
+                        elif isinstance(obj, UI.UITooltip):
+                            visibility_toggle_button = obj.table[0][0]
+                            delete_button = obj.table[0][1]
+                            if visibility_toggle_button.mouse_down():
+                                pass  # TODO: figure out how to make layers visible
+                            elif delete_button.mouse_down():
+                                delete_button.color = UI.gray
+                                if layers:
+                                    if len(layers_tooltip.table) > 2:
+                                        layers_tooltip.pop_item(-1, 0)
+                                        layers_tooltip.pop_item(-1, 0)
 
-                                    layers.pop((i - 1) // 2)
-                                    
-                                    add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
-                            obj.clicked = delete_button
-                            break
-                    else:
-                        print(obj)
+                                        layers.pop((i - 1) // 2)
+
+                                        curr_layer = min(curr_layer, len(layers) - 1)
+
+                                        add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
+                                obj.clicked = delete_button
+                                break
+                        else:
+                            print(obj)
             if add_layer_button.mouse_hover():
                 layers_tooltip.append_item(UI.UIButton(0, 0, layer_square, layer_square, image=pygame.image.load('icons/default_image.png')))
                 layers_tooltip.append_item(UI.UITooltip(0, 0, int(1.2 * layer_square) - 4, layer_square // 2 - 4, 1, 2, show_grid=False))
@@ -160,6 +163,7 @@ def loop():
                 new_tooltip_element.set_item(0, 0, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/visible.png')))
                 new_tooltip_element.set_item(0, 1, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/delete.png')))
                 layers.append(new_canvas(canv_args))
+                curr_layer += 1
                 layers_tooltip.update_item_sizes()
                 add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
 
@@ -198,10 +202,7 @@ def loop():
     if draw_canvas:
         now_canvas = layers[curr_layer]
         now_canvas.draw(screen)
-
-    brush_size = size_slider.value
-
-    if draw_canvas:
+        brush_size = size_slider.value
         if now_canvas.mouse_down():
             now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color, size=(brush_size, brush_size), brush=brush)
 
