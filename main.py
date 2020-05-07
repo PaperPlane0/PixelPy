@@ -56,7 +56,7 @@ paint_tools_tooltip = UI.UITooltip(size_slider.x + size_slider.width + 10, 350, 
 for i, item in enumerate(UI.icons):
     paint_tools_tooltip.set_item(i // paint_tools_tooltip.cols, i % paint_tools_tooltip.cols, UI.UIButton(0, 0, 24, 24, image=item))
 
-layers = [canvas]
+layers = [(canvas, True)]
 curr_layer = 0
 layer_square = 80
 layers_tooltip = UI.UITooltip(canvas_size[0] + canv_x + 20, 2, int(layer_square * 1.2), layer_square, 2, 1, title_h=p_title_h, text=('layers', UI.black), font=('arial', 15))
@@ -122,7 +122,8 @@ def loop():
                             elif ps == 1:
                                 brush = None
                             elif ps == 2:
-                                draw_color = canvas.bg_col
+                                if draw_canvas:
+                                    draw_color = layers[curr_layer][0].bg_col
                             elif ps == 3:
                                 brush = canvas_flood_fill
                             paint_tools_tooltip.clicked = button
@@ -162,7 +163,7 @@ def loop():
                 new_tooltip_element = layers_tooltip.get_item(-1, 0)
                 new_tooltip_element.set_item(0, 0, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/visible.png')))
                 new_tooltip_element.set_item(0, 1, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/delete.png')))
-                layers.append(new_canvas(canv_args))
+                layers.append((new_canvas(canv_args), True))
                 curr_layer += 1
                 layers_tooltip.update_item_sizes()
                 add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
@@ -200,12 +201,17 @@ def loop():
         draw_canvas = False
 
     if draw_canvas:
-        now_canvas = layers[curr_layer]
-        now_canvas.draw(screen)
-        brush_size = size_slider.value
-        if now_canvas.mouse_down():
-            now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color, size=(brush_size, brush_size), brush=brush)
-
+        now_canvas, do_draw = layers[curr_layer]
+        if do_draw:
+            now_canvas.draw(screen)
+            brush_size = size_slider.value
+            if now_canvas.mouse_down():
+                now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color, size=(brush_size, brush_size), brush=brush)
+        for i, layer_obj in enumerate(layers):
+            if i != curr_layer:
+                layer_canvas, do_draw = layer_obj
+                if do_draw:
+                    layer_canvas.draw(screen)
     basic_color_tooltip.draw(screen)
     size_slider.draw(screen)
     paint_tools_tooltip.draw(screen)

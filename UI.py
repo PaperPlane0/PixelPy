@@ -245,8 +245,7 @@ class Canvas(UIItem):
             self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha)
 
     def draw(self, surface):
-        draw.rect(surface, black, ((self.x - 1, self.y - 1), (self.width + 2, self.height + 2)))
-        draw.rect(surface, background, ((self.x, self.y), (self.width, self.height)))
+        draw.rect(surface, black, ((self.x - 1, self.y - 1), (self.width + 2, self.height + 2)), 2)
         for row in self.table:
             for px in row:
                 if px.color != background:
