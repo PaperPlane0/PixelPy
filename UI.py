@@ -96,6 +96,10 @@ class UIItem:
             if self.color:
                 self.color = self.old_color
 
+    def draw_frame(self, surface, color1, width=2):
+        padding = width // 2
+        pygame.draw.rect(surface, color1, (self.x + padding, self.y + padding, self.width - 2 * padding, self.height - 2 * padding), width)
+
     def draw(self, surface):
         col = black
         if self.color:

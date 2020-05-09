@@ -80,6 +80,7 @@ for i in range(0, len(UI.colors), 8):
 
 selected_brush = pygame.image.load('brushes/circle16.png')
 brush = selected_brush
+selected_layer_button = layers_tooltip.get_item(0, 0)
 
 def setup():
     screen.fill(UI.background)
@@ -94,6 +95,7 @@ def loop():
     global selected_brush
     global brush
     global curr_layer
+    global selected_layer_button
 
     screen.fill(UI.background)
 
@@ -132,15 +134,12 @@ def loop():
             if layers_tooltip.mouse_hover():
                 for i, obj in enumerate([x[0] for x in layers_tooltip.table]):
                     if obj.mouse_down():
+                        layers_tooltip.clicked = obj
                         if isinstance(obj, UI.UIButton):
+                            selected_layer_button = obj
                             curr_layer = i // 2
-                            if layers_tooltip.clicked:
-                                if isinstance(layers_tooltip.clicked, UI.UIButton):
-                                    layers_tooltip.clicked.tint(False)
-                            layers_tooltip.clicked = obj
-                            obj.color = UI.green
+                            obj.color = UI.gray
                         elif isinstance(obj, UI.UITooltip):
-                            layers_tooltip.clicked = obj
                             visibility_toggle_button = obj.table[0][0]
                             delete_button = obj.table[0][1]
                             if visibility_toggle_button.mouse_down():
@@ -159,8 +158,9 @@ def loop():
                                         layers_tooltip.pop_item(-1, 0)
 
                                         layers.pop((i - 1) // 2)
-
                                         curr_layer = min(curr_layer, len(layers) - 1)
+
+                                        selected_layer_button = layers_tooltip.get_item(curr_layer * 2, 0)
 
                                         add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
                                 obj.clicked = delete_button
@@ -187,8 +187,11 @@ def loop():
                 paint_tools_tooltip.clicked = None
             if layers_tooltip.clicked:
                 if isinstance(layers_tooltip.clicked, UI.UITooltip):
-                    layers_tooltip.clicked.clicked.tint(False)
-                    layers_tooltip.clicked.clicked = None
+                    if layers_tooltip.clicked.clicked:
+                        layers_tooltip.clicked.clicked.tint(False)
+                        layers_tooltip.clicked.clicked = None
+                else:
+                    layers_tooltip.clicked.tint(False)
         if event.type == pygame.MOUSEMOTION:
             old_mouse_x, old_mouse_y = mouse_x, mouse_y
             mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -225,6 +228,7 @@ def loop():
     paint_tools_tooltip.draw(screen)
     layers_tooltip.draw(screen)
     add_layer_button.draw(screen)
+    selected_layer_button.draw_frame(screen, UI.red, width=5)
     pygame.display.update()
     clock.tick(240)
 
