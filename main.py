@@ -1,6 +1,7 @@
 import pygame
 import UI
 from funcs import canvas_flood_fill
+import sys
 
 pygame.init()
 
@@ -12,13 +13,12 @@ flag = True
 def debug():
     print('OK')
 
-
 screen = pygame.display.set_mode(screen_size, 0, 16, pygame.HWACCEL)
 clock = pygame.time.Clock()
 
 canv_c, canv_r = 128, 128
 canvas_keep_ratio = True
-canvas_keep_rc = False
+canvas_keep_rc = True
 canv_px_w = canvas_size[0] // canv_c
 canv_px_h = canvas_size[1] // canv_r
 if canvas_keep_ratio:
@@ -81,9 +81,12 @@ for i in range(0, len(UI.colors), 8):
 selected_brush = pygame.image.load('brushes/circle16.png')
 brush = selected_brush
 selected_layer_button = layers_tooltip.get_item(0, 0)
+fr = 0
 
 def setup():
-    screen.fill(UI.background)
+    screen.fill(UI.white)
+    canvas.draw(screen)
+    pygame.display.flip()
 
 
 def loop():
@@ -96,14 +99,18 @@ def loop():
     global brush
     global curr_layer
     global selected_layer_button
+    global fr
 
-    screen.fill(UI.background)
+    pygame.draw.rect(screen, UI.background, (layers_tooltip.x - 5, 0, layers_tooltip.width + 10, add_layer_button.x + 10))
+    pygame.draw.rect(screen, UI.background, (paint_tools_tooltip.x - 5, paint_tools_tooltip.y - 5, paint_tools_tooltip.width + 10, paint_tools_tooltip.height + 10))
 
     draw_canvas = bool(layers)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
+        if event.type == pygame.KEYDOWN:
+            pass
         if event.type == pygame.MOUSEBUTTONDOWN:
             if basic_color_tooltip.mouse_hover():
                 for row in basic_color_tooltip.table:
@@ -114,6 +121,7 @@ def loop():
                             basic_color_tooltip.clicked = button
                             button.tint(True, amt=20)
                             break
+
             if paint_tools_tooltip.mouse_hover():
                 for i, row in enumerate(paint_tools_tooltip.table):
                     for j, button in enumerate(row):
@@ -131,6 +139,7 @@ def loop():
                             paint_tools_tooltip.clicked = button
                             button.tint(True, amt=20)
                             break
+
             if layers_tooltip.mouse_hover():
                 for i, obj in enumerate([x[0] for x in layers_tooltip.table]):
                     if obj.mouse_down():
@@ -147,7 +156,7 @@ def loop():
                                 if layers[i // 2][1]:
                                     visibility_toggle_button.image = pygame.image.load('icons/visible.png')
                                 else:
-                                    visibility_toggle_button.image = image=pygame.image.load('icons/invisible.png')
+                                    visibility_toggle_button.image = pygame.image.load('icons/invisible.png')
                                 visibility_toggle_button.color = UI.gray
                                 obj.clicked = visibility_toggle_button
                             elif delete_button.mouse_down():
@@ -162,7 +171,9 @@ def loop():
 
                                         selected_layer_button = layers_tooltip.get_item(curr_layer * 2, 0)
 
+                                        old_add_layer_button_pos = add_layer_button.get_rectangle()
                                         add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
+                                        pygame.display.update(old_add_layer_button_pos)
                                 obj.clicked = delete_button
                                 break
                         else:
@@ -176,7 +187,9 @@ def loop():
                 layers.append([new_canvas(canv_args), True])
                 curr_layer += 1
                 layers_tooltip.update_item_sizes()
+                old_add_layer_button_pos = add_layer_button.get_rectangle()
                 add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
+                pygame.display.update(old_add_layer_button_pos)
 
         if event.type == pygame.MOUSEBUTTONUP:
             if basic_color_tooltip.clicked:
@@ -192,6 +205,7 @@ def loop():
                         layers_tooltip.clicked.clicked = None
                 else:
                     layers_tooltip.clicked.tint(False)
+
         if event.type == pygame.MOUSEMOTION:
             old_mouse_x, old_mouse_y = mouse_x, mouse_y
             mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -214,23 +228,33 @@ def loop():
     if draw_canvas:
         now_canvas, do_draw = layers[curr_layer]
         if do_draw:
-            now_canvas.draw(screen)
             brush_size = size_slider.value
             if now_canvas.mouse_down():
-                now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color, size=(brush_size, brush_size), brush=brush)
+                if old_mouse_x != mouse_x or old_mouse_y != mouse_y:
+                    now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
+                                      size=(brush_size, brush_size), brush=brush, surface=screen)
+                    pygame.display.update(now_canvas.get_rectangle())
+            #now_canvas.draw(screen)
         for i, layer_obj in enumerate(layers):
             if i != curr_layer:
                 layer_canvas, do_draw = layer_obj
                 if do_draw:
                     layer_canvas.draw(screen)
+
     basic_color_tooltip.draw(screen)
     size_slider.draw(screen)
     paint_tools_tooltip.draw(screen)
     layers_tooltip.draw(screen)
-    add_layer_button.draw(screen)
     selected_layer_button.draw_frame(screen, UI.red, width=5)
-    pygame.display.update()
-    clock.tick(240)
+    add_layer_button.draw(screen)
+
+    pygame.display.update(basic_color_tooltip.get_rectangle())
+    pygame.display.update(size_slider.get_rectangle())
+    pygame.display.update(paint_tools_tooltip.get_rectangle())
+    pygame.display.update(layers_tooltip.get_rectangle())
+    pygame.display.update((layers_tooltip.x - 5, layers_tooltip.y + layers_tooltip.height, layers_tooltip.width + 10, layers_tooltip.row_size + 20))
+    clock.tick(128)
+    print(clock)
 
 
 setup()

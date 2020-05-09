@@ -81,6 +81,11 @@ class UIItem:
             return True
         return False
 
+    def get_rectangle(self):
+        x = max(0, self.x - 5)
+        y = max(0, self.y - 5)
+        return (x, y, self.width + 10, self.height + 10)
+
     def mouse_down(self):
         if self.mouse_hover() and pygame.mouse.get_pressed()[0] == 1:
             return True
@@ -167,7 +172,7 @@ class Canvas(UIItem):
                 if j < cols - 1:
                     self.table[i][j].neighbors.append(self.table[i][j + 1])
 
-    def merge_img(self, col, row, img, color=None):
+    def merge_img(self, col, row, img, color=None, surface=None):
         image = img
         history_obj = []
         x, y = image.get_size()
@@ -186,9 +191,11 @@ class Canvas(UIItem):
                     cl = self.table[p_row][p_col].color
                     history_obj.append({self.table[p_row][p_col]: self.table[p_row][p_col].color})
                     self.table[p_row][p_col].color = funcs.rgba_to_rgb(cl, pix)
+                    if surface:
+                        self.table[p_row][p_col].draw(surface)
         self.paint_history.append(history_obj)
 
-    def pixel_paint(self, col, row, color=black, brush=None, size=(1, 1), alpha=None):
+    def pixel_paint(self, col, row, color=black, brush=None, size=(1, 1), alpha=None, surface=None):
         row = min(abs(row), self.rows - 1)
         col = min(abs(col), self.cols - 1)
         if brush:
@@ -197,9 +204,10 @@ class Canvas(UIItem):
                     br = pygame.transform.scale(brush, size)
                 else:
                     br = brush
-                self.merge_img(col, row, br, color)
+                self.merge_img(col, row, br, color, surface=surface)
             elif callable(brush):
                 brush(self, row, col, color)
+                self.draw(surface)
         else:
             history_obj = []
             startrow = max((row - size[1] // 2), 0)
@@ -214,6 +222,8 @@ class Canvas(UIItem):
                     if self.table[i][j].color != color:
                         history_obj.append([{self.table[i][j]: self.table[i][j].color}])
                         self.table[i][j].color = color
+                        if surface:
+                            self.table[i][j].draw(surface)
             self.paint_history.append(history_obj)
         if len(self.paint_history) > 100:
             self.paint_history.pop(0)
@@ -236,7 +246,7 @@ class Canvas(UIItem):
             points.append((int(row), int(col)))
         return points
 
-    def line_paint(self, old_mpos, new_mpos, color=black, brush=None, size=(1, 1), alpha=255):
+    def line_paint(self, old_mpos, new_mpos, color=black, brush=None, size=(1, 1), alpha=255, surface=None):
         line = self.line(old_mpos, new_mpos)
         if min(size) == 0:
             return
@@ -246,7 +256,7 @@ class Canvas(UIItem):
             step = 1
         for i in range(1, len(line), step):
             row, col = line[i]
-            self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha)
+            self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha, surface=surface)
 
     def draw(self, surface):
         draw.rect(surface, black, ((self.x - 1, self.y - 1), (self.width + 2, self.height + 2)), 2)
@@ -311,6 +321,11 @@ class UISlider(UIItem):
         draw.circle(surface, self.color, (self.scale_x + r, s_y + s_h), r)
         draw.circle(surface, self.slider_color, (self.scale_x + r, self.slider_y), self.slider_r)
 
+    def get_rectangle(self):
+        x = max(0, self.x - 5)
+        y = max(0, self.y - 5 - self.title_h)
+        return (x, y, self.width + 10, self.height + 10 + self.title_h)
+
 
 class UITooltip(UIItem):
     def __init__(self, x, y, width, height, rows, cols, color=black, bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0), show_grid=True):
@@ -341,6 +356,11 @@ class UITooltip(UIItem):
         for i in range(self.cols + 1):
             draw.line(surface, self.color, (x, self.y), (x, y - self.row_size))
             x += hor_space
+
+    def get_rectangle(self):
+        x = max(0, self.x - 5)
+        y = max(0, self.y - 5 - self.title_h)
+        return (x, y, self.width + 10, self.height + 10 + self.title_h)
 
     def update_item_sizes(self):
         self.row_size = (self.height - self.title_h) // self.rows
