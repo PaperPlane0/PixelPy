@@ -56,7 +56,7 @@ paint_tools_tooltip = UI.UITooltip(size_slider.x + size_slider.width + 10, 350, 
 for i, item in enumerate(UI.icons):
     paint_tools_tooltip.set_item(i // paint_tools_tooltip.cols, i % paint_tools_tooltip.cols, UI.UIButton(0, 0, 24, 24, image=item))
 
-layers = [(canvas, True)]
+layers = [[canvas, True]]
 curr_layer = 0
 layer_square = 80
 layers_tooltip = UI.UITooltip(canvas_size[0] + canv_x + 20, 2, int(layer_square * 1.2), layer_square, 2, 1, title_h=p_title_h, text=('layers', UI.black), font=('arial', 15))
@@ -132,15 +132,25 @@ def loop():
             if layers_tooltip.mouse_hover():
                 for i, obj in enumerate([x[0] for x in layers_tooltip.table]):
                     if obj.mouse_down():
-                        layers_tooltip.clicked = obj
                         if isinstance(obj, UI.UIButton):
                             curr_layer = i // 2
-                            obj.color = UI.gray
+                            if layers_tooltip.clicked:
+                                if isinstance(layers_tooltip.clicked, UI.UIButton):
+                                    layers_tooltip.clicked.tint(False)
+                            layers_tooltip.clicked = obj
+                            obj.color = UI.green
                         elif isinstance(obj, UI.UITooltip):
+                            layers_tooltip.clicked = obj
                             visibility_toggle_button = obj.table[0][0]
                             delete_button = obj.table[0][1]
                             if visibility_toggle_button.mouse_down():
-                                pass  # TODO: figure out how to make layers visible
+                                layers[i // 2][1] = not layers[i // 2][1]
+                                if layers[i // 2][1]:
+                                    visibility_toggle_button.image = pygame.image.load('icons/visible.png')
+                                else:
+                                    visibility_toggle_button.image = image=pygame.image.load('icons/invisible.png')
+                                visibility_toggle_button.color = UI.gray
+                                obj.clicked = visibility_toggle_button
                             elif delete_button.mouse_down():
                                 delete_button.color = UI.gray
                                 if layers:
@@ -163,7 +173,7 @@ def loop():
                 new_tooltip_element = layers_tooltip.get_item(-1, 0)
                 new_tooltip_element.set_item(0, 0, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/visible.png')))
                 new_tooltip_element.set_item(0, 1, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/delete.png')))
-                layers.append((new_canvas(canv_args), True))
+                layers.append([new_canvas(canv_args), True])
                 curr_layer += 1
                 layers_tooltip.update_item_sizes()
                 add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
@@ -179,8 +189,6 @@ def loop():
                 if isinstance(layers_tooltip.clicked, UI.UITooltip):
                     layers_tooltip.clicked.clicked.tint(False)
                     layers_tooltip.clicked.clicked = None
-                layers_tooltip.clicked.tint(False)
-                layers_tooltip.clicked = None
         if event.type == pygame.MOUSEMOTION:
             old_mouse_x, old_mouse_y = mouse_x, mouse_y
             mouse_x, mouse_y = pygame.mouse.get_pos()
