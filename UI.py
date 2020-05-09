@@ -37,11 +37,11 @@ colors = [[0, 0, 0], [24,24,24], [48,48,48], [64,64,64], [128,128,128],[155,155,
            [110,44,0],[135,54,0],[160,64,0],[211,84,0],[220,118,51],[229,152,102],[237,187,153],[246,221,204]
            ]
 
-colors2 = [[241,157,154],[241,179,164],[246,209,190],[252,225,213],[242,193,173],[241,175,153], #Skins
-           [128,232,221],[124,194,246],[175,129,228],[231,132,186],[249,193,160],[183,246,175], # Soft Hues
-           [100,93,62],[130,123,92],[156,151,115],[86,113,80],[46,71,43],[16,42,10],            # Forest
-           [252,120,150],[193,107,188],[152,89,197],[108,66,196],[85,56,193],[30,171,215],      # Sunset
-           [92,58,42],[121,84,63],[172,138,104],[200,173,139],[223,213,191],[206,159,85]]       # Coffee
+colors2 = {'Skins': ([241,157,154],[241,179,164],[246,209,190],[252,225,213],[242,193,173],[241,175,153]),
+           'Soft Hues': ([128,232,221],[124,194,246],[175,129,228],[231,132,186],[249,193,160],[183,246,175]),
+           'Forest': ([100,93,62],[130,123,92],[156,151,115],[86,113,80],[46,71,43],[16,42,10]),
+           'Sunset': ([252,120,150],[193,107,188],[152,89,197],[108,66,196],[85,56,193],[30,171,215]),
+           'Coffee': ([92,58,42],[121,84,63],[172,138,104],[200,173,139],[223,213,191],[206,159,85])}
 
 background = white
 
@@ -52,13 +52,14 @@ circle_icon = pygame.image.load('icons/circle.png')
 eraser_icon = pygame.image.load('icons/eraser.png')
 fill_icon = pygame.image.load('icons/fill.png')
 pencil_icon = pygame.image.load('icons/pencil.png')
+color_pick_icon = pygame.image.load('icons/color_pick.png')
 rect_icon = pygame.image.load('icons/rect.png')
 swap_col_icon = pygame.image.load('icons/swap_col.png')
 rotate_icon = pygame.image.load('icons/rotate.png')
 move_icon = pygame.image.load('icons/move.png')
 line_icon = pygame.image.load('icons/line.png')
 mirror_icon = pygame.image.load('icons/mirror.png')
-icons = [brush_icon, pencil_icon, eraser_icon, fill_icon, swap_col_icon, circle_icon, rect_icon, line_icon, rotate_icon, move_icon, mirror_icon]
+icons = [brush_icon, pencil_icon, eraser_icon, fill_icon, color_pick_icon, swap_col_icon, circle_icon, rect_icon, line_icon, rotate_icon, move_icon, mirror_icon]
 draw_tools = {}
 
 class UIItem:
@@ -256,7 +257,7 @@ class Canvas(UIItem):
         if min(size) == 0:
             return
         if brush and isinstance(brush, pygame.Surface):
-            step = min(size) // 3
+            step = max(min(size) // 3, 1)
         else:
             step = 1
         for i in range(1, len(line), step):
