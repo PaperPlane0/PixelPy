@@ -51,19 +51,21 @@ def lerp_point(p0, p1, t):
     return lerp(x0, x1, t), lerp(y0, y1, t)
 
 
-def canvas_flood_fill(canv, row, col, color):
+def canvas_flood_fill(canv, row, col, color, surface=None):
     px = canv.table[row][col]
     old_col = px.color
-    flood_fill(px, color, old_col)
+    flood_fill(px, color, old_col, surface=surface)
 
 
-def flood_fill(pixel, color, old_col):
+def flood_fill(pixel, color, old_col, surface=None):
     if color == old_col:
         return
     queue = [pixel]
     while queue:
         px = queue.pop()
         px.color = color
+        if surface:
+            px.draw(surface)
         for neighbor in px.neighbors:
             if neighbor.color == old_col:
                 queue.append(neighbor)

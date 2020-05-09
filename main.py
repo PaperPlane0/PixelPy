@@ -6,7 +6,7 @@ import sys
 pygame.init()
 
 screen_size = (1200, 1000)
-canvas_size = (int(screen_size[0] / 1.5), int(screen_size[1] / 1.5))
+canvas_size = (int(screen_size[0] / 1.2), int(screen_size[1] / 1.2))
 flag = True
 
 
@@ -47,8 +47,7 @@ def new_canvas(in_canv_args):
 
 
 canvas = new_canvas(canv_args)
-
-size_slider = UI.UISlider(5, 350, 30, 190, (canv_c + canv_c) // 16, 0, slider_color=UI.red)
+size_slider = UI.UISlider(5, 350, 30, 190, min(canv_c // 8, 50), 0, slider_color=UI.red)
 
 tool_square = 40
 tool_r, tool_c = 4, 3
@@ -153,6 +152,15 @@ def loop():
                             delete_button = obj.table[0][1]
                             if visibility_toggle_button.mouse_down():
                                 layers[i // 2][1] = not layers[i // 2][1]
+                                if not layers[i // 2][1]:
+                                    layers[i // 2][0].hide(screen, True)
+                                    for canv_obj in layers:
+                                        cv, do_draw = canv_obj
+                                        if do_draw:
+                                            cv.draw(screen)
+                                else:
+                                    layers[i // 2][0].draw(screen)
+                                pygame.display.update(layers[i // 2][0].get_rectangle())
                                 if layers[i // 2][1]:
                                     visibility_toggle_button.image = pygame.image.load('icons/visible.png')
                                 else:
@@ -163,8 +171,8 @@ def loop():
                                 delete_button.color = UI.gray
                                 if layers:
                                     if len(layers_tooltip.table) > 2:
-                                        layers_tooltip.pop_item(-1, 0)
-                                        layers_tooltip.pop_item(-1, 0)
+                                        layers_tooltip.pop_item(i - 1, 0)
+                                        layers_tooltip.pop_item(i - 1, 0)
 
                                         layers.pop((i - 1) // 2)
                                         curr_layer = min(curr_layer, len(layers) - 1)
@@ -174,6 +182,15 @@ def loop():
                                         old_add_layer_button_pos = add_layer_button.get_rectangle()
                                         add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
                                         pygame.display.update(old_add_layer_button_pos)
+
+                                        pygame.draw.rect(screen, UI.background, canvas.get_rectangle())
+
+                                        for canv_obj in layers:
+                                            cv, do_draw = canv_obj
+                                            if do_draw:
+                                                cv.draw(screen)
+
+                                        pygame.display.update(canvas.get_rectangle())
                                 obj.clicked = delete_button
                                 break
                         else:
@@ -234,12 +251,6 @@ def loop():
                     now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
                                       size=(brush_size, brush_size), brush=brush, surface=screen)
                     pygame.display.update(now_canvas.get_rectangle())
-            #now_canvas.draw(screen)
-        for i, layer_obj in enumerate(layers):
-            if i != curr_layer:
-                layer_canvas, do_draw = layer_obj
-                if do_draw:
-                    layer_canvas.draw(screen)
 
     basic_color_tooltip.draw(screen)
     size_slider.draw(screen)

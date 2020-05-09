@@ -105,10 +105,12 @@ class UIItem:
         padding = width // 2
         pygame.draw.rect(surface, color1, (self.x + padding, self.y + padding, self.width - 2 * padding, self.height - 2 * padding), width)
 
-    def draw(self, surface):
+    def draw(self, surface, color_override=None):
         col = black
         if self.color:
             col = self.color
+        if color_override:
+            col = color_override
         if self.image:
             img = pygame.transform.scale(self.image, (self.width, self.height))
             if self.color:
@@ -129,6 +131,10 @@ class UIItem:
             tx = (self.width - text_len) // 2
             ty = (self.height - text_height) // 2
             surface.blit(title, (self.x + tx, self.y + ty))
+
+    def hide(self, on, surface):
+        if on:
+            self.draw(surface, background)
 
 
 class UIButton(UIItem):
@@ -206,8 +212,7 @@ class Canvas(UIItem):
                     br = brush
                 self.merge_img(col, row, br, color, surface=surface)
             elif callable(brush):
-                brush(self, row, col, color)
-                self.draw(surface)
+                brush(self, row, col, color, surface=surface)
         else:
             history_obj = []
             startrow = max((row - size[1] // 2), 0)
@@ -251,25 +256,29 @@ class Canvas(UIItem):
         if min(size) == 0:
             return
         if brush and isinstance(brush, pygame.Surface):
-            step = min(size) + 1
+            step = min(size) // 3
         else:
             step = 1
         for i in range(1, len(line), step):
             row, col = line[i]
             self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha, surface=surface)
 
-    def draw(self, surface):
+    def draw(self, surface, col_override=None):
         draw.rect(surface, black, ((self.x - 1, self.y - 1), (self.width + 2, self.height + 2)), 2)
         for row in self.table:
             for px in row:
                 if px.color != background:
-                    px.draw(surface)
+                    px.draw(surface, color_override=col_override)
 
     def clear(self):
         for row in self.table:
             for px in row:
                 px.color = background
         self.paint_history = []
+
+    def hide(self, surface, on):
+        if on:
+            self.draw(surface, col_override=background)
 
 
 class UISlider(UIItem):
