@@ -205,6 +205,10 @@ class Canvas(UIItem):
     def pixel_paint(self, col, row, color=black, brush=None, size=(1, 1), alpha=None, surface=None):
         row = min(abs(row), self.rows - 1)
         col = min(abs(col), self.cols - 1)
+        startrow = max((row - size[1] // 2), 0)
+        endrow = min((row + size[1] // 2), self.rows - 1)
+        startcol = max((col - size[0] // 2), 0)
+        endcol = min((col + size[0] // 2), self.cols - 1)
         if brush:
             if isinstance(brush, pygame.Surface):
                 if brush.get_size() != size:
@@ -216,10 +220,6 @@ class Canvas(UIItem):
                 brush(self, row, col, color, surface=surface)
         else:
             history_obj = []
-            startrow = max((row - size[1] // 2), 0)
-            endrow = min((row + size[1] // 2), self.rows - 1)
-            startcol = max((col - size[0] // 2), 0)
-            endcol = min((col + size[0] // 2), self.cols - 1)
             # print(f'srow:{startrow}, endrow:{endrow}, startcol:{startcol}, endcol:{endcol}')
             if alpha:
                 color = (*color[:3], alpha)
@@ -233,6 +233,7 @@ class Canvas(UIItem):
             self.paint_history.append(history_obj)
         if len(self.paint_history) > 100:
             self.paint_history.pop(0)
+        return max(0, startrow - 5), max(0, startcol - 5), min(self.rows, endrow + 5), min(self.cols, endcol + 5)
 
     def undo(self):
         if self.paint_history:
@@ -262,9 +263,16 @@ class Canvas(UIItem):
             step = 1
         for i in range(1, len(line), step):
             row, col = line[i]
-            self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha, surface=surface)
+            changed = self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha, surface=surface)
+        return changed
 
-    def draw(self, surface, col_override=None):
+    def draw(self, surface, col_override=None, area=None):
+        if area:
+            startrow, startcol, endrow, endcol = area
+            for i in range(startrow, endrow + 1):
+                for j in range(startcol, endcol + 1):
+                    self.table[i][j].draw(surface)
+            return
         draw.rect(surface, black, ((self.x - 1, self.y - 1), (self.width + 2, self.height + 2)), 2)
         for row in self.table:
             for px in row:
@@ -453,3 +461,41 @@ class UITooltip(UIItem):
         for row in self.table:
             for item in row:
                 item.draw(surface)
+
+
+class Popup(UIItem):
+    def __init__(self, x, y, width, height, color=black, starting_items = [], bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0)):
+        super().__init__(x, y + title_h, width, height + title_h, color=color)
+        self.title_x = x
+        self.title_y = y
+        self.items = starting_items
+        self.tinted = None
+        self.clicked = None
+        self.bg_color = bg_color
+        self.image = image
+        self.title_h = title_h
+        self.title = Rectangle(x, y, width, title_h, color=bg_color, image=image, text=text, font=font)
+
+    def add_item(self, item, x, y, size = None, reference_element=None):
+        if reference_element:
+            if reference_element in self.items:
+                item.x = reference_element.x + x
+                item.y = reference_element.y + y
+        else:
+            item.x = self.x + x
+            item.y = self.y + y
+        if size:
+            item.width, item.height = size
+        else:
+            item.width, item.height = min(self.width, item.width), min(self.height, item.height)
+        self.items.append(item)
+
+    def draw(self, surface, color_override=None):
+        draw.rect(surface, self.bg_color, (self.x, self.title_y, self.width, self.height + self.title_h))
+        if self.image:
+            img = pygame.transform.scale(self.image, (self.width, self.height))
+            surface.blit(img)
+        for item in self.items:
+            item.draw(surface)
+        draw.rect(surface, self.color, (self.x, self.title_y, self.width, self.height + self.title_h), 2)
+        draw.line(surface, self.color, (self.x, self.y), (self.x + self.width, self.y), 2)

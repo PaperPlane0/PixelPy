@@ -42,11 +42,13 @@ for i in range(0, len(UI.colors), main_p_c):
         b_c = (*color, 255)
         basic_color_tooltip.set_item((i // main_p_c), col, UI.UIButton(0, 0, 20, 20, color=b_c))
 
-custom_color_tooltip = UI.UITooltip(5, basic_color_tooltip.height + 22, 120, 20, 1, 6, title_h=20, text=('Custom palette', UI.black), font=('arial', 15))
+custom_color_tooltip = UI.UITooltip(5, basic_color_tooltip.height + 22, 156, 26, 1, 6, title_h=20, text=('Custom palette', UI.black), font=('arial', 15))
 
-current_color_indicator = UI.UITooltip(5, custom_color_tooltip.y + 40, 46, 36, 1, 1, title_h=20, text=('color', UI.black), font=('arial', 15))
+current_color_indicator = UI.UITooltip(15, custom_color_tooltip.y + 40, 46, 36, 1, 1, title_h=20, text=('color', UI.black), font=('arial', 15))
 current_color_indicator.set_item(0, 0, UI.Rectangle(7, current_color_indicator.y + 2, 42, 32, color=UI.black))
 
+cw_icon = pygame.image.load('icons/pick_color.png')
+pick_color_button = UI.UIButton(custom_color_tooltip.width - 10 - current_color_indicator.height, custom_color_tooltip.y + 40, current_color_indicator.height, current_color_indicator.height, image=cw_icon)
 
 
 canv_x = p_square * main_p_c + 40
@@ -58,11 +60,11 @@ def new_canvas(in_canv_args):
 
 
 canvas = new_canvas(canv_args)
-size_slider = UI.UISlider(5, 450, 30, 190, min(canv_c // 8, 50), 0, slider_color=UI.red)
+size_slider = UI.UISlider(5, 450, 30, 170, min(canv_c // 8, 50), 0, slider_color=UI.red)
 
 tool_square = 40
-tool_r, tool_c = 6, 2
-paint_tools_tooltip = UI.UITooltip(size_slider.x + size_slider.width + 10, 450, tool_square * tool_c, tool_square * tool_r, tool_r, tool_c, title_h=p_title_h, text=('tools', UI.black), font=('arial', 15))
+tool_r, tool_c = 4, 3
+paint_tools_tooltip = UI.UITooltip(size_slider.x + size_slider.width + 10, 450, tool_square * tool_c, tool_square * tool_r, tool_r, tool_c, title_h=p_title_h, text=('Tools', UI.black), font=('arial', 15))
 
 for i, item in enumerate(UI.icons):
     paint_tools_tooltip.set_item(i // paint_tools_tooltip.cols, i % paint_tools_tooltip.cols, UI.UIButton(0, 0, 24, 24, image=item))
@@ -166,6 +168,7 @@ def loop():
                                             cv.draw(screen)
                                 else:
                                     layers[i // 2][0].draw(screen)
+                                    layers[curr_layer][0].draw(screen)
                                 pygame.display.update(layers[i // 2][0].get_rectangle())
                                 if layers[i // 2][1]:
                                     visibility_toggle_button.image = pygame.image.load('icons/visible.png')
@@ -254,8 +257,13 @@ def loop():
             brush_size = size_slider.value
             if now_canvas.mouse_down():
                 if old_mouse_x != mouse_x or old_mouse_y != mouse_y:
-                    now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
+                    changed = now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
                                       size=(brush_size, brush_size), brush=brush, surface=screen)
+                    if changed:
+                        for lr in layers:
+                            cv, dr = lr
+                            if dr and cv != now_canvas and draw_color == UI.background:
+                                cv.draw(screen, area=changed)
                     pygame.display.update(now_canvas.get_rectangle())
 
     current_color_indicator.get_item(0, 0).color = draw_color
@@ -268,6 +276,8 @@ def loop():
     add_layer_button.draw(screen)
     custom_color_tooltip.draw(screen)
     current_color_indicator.draw(screen)
+    pick_color_button.draw(screen)
+
 
     pygame.display.update(basic_color_tooltip.get_rectangle())
     pygame.display.update(size_slider.get_rectangle())
@@ -275,9 +285,10 @@ def loop():
     pygame.display.update(layers_tooltip.get_rectangle())
     pygame.display.update(custom_color_tooltip.get_rectangle())
     pygame.display.update(current_color_indicator.get_rectangle())
+    pygame.display.update(pick_color_button.get_rectangle())
     pygame.display.update((layers_tooltip.x - 5, layers_tooltip.y + layers_tooltip.height, layers_tooltip.width + 10, layers_tooltip.row_size + 20))
     clock.tick(128)
-    #  print(clock)
+    print(clock)
 
 
 setup()
