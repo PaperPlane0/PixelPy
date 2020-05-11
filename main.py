@@ -10,9 +10,6 @@ canvas_size = (int(screen_size[0] / 1.2), int(screen_size[1] / 1.2))
 flag = True
 
 
-def debug():
-    print('OK')
-
 screen = pygame.display.set_mode(screen_size, 0, 16, pygame.HWACCEL)
 clock = pygame.time.Clock()
 
@@ -154,10 +151,12 @@ def loop():
                         layers_tooltip.clicked = obj
                         if isinstance(obj, UI.UIButton):
                             selected_layer_button = obj
+                            layers[curr_layer][0].hide(screen, True)
                             curr_layer = i // 2
                             if layers[curr_layer][1]:
                                 layers[curr_layer][0].draw(screen)
                             obj.color = UI.gray
+                            pygame.display.update(layers[curr_layer][0].get_rectangle())
                         elif isinstance(obj, UI.UITooltip):
                             visibility_toggle_button = obj.table[0][0]
                             delete_button = obj.table[0][1]
