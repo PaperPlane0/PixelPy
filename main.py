@@ -253,17 +253,13 @@ def loop():
 
     if draw_canvas:
         now_canvas, do_draw = layers[curr_layer]
+        overlay_layers = [x[0] for x in layers if x[0] != now_canvas and x[1]]
         if do_draw:
             brush_size = size_slider.value
             if now_canvas.mouse_down():
                 if old_mouse_x != mouse_x or old_mouse_y != mouse_y:
-                    changed = now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
-                                      size=(brush_size, brush_size), brush=brush, surface=screen)
-                    if changed:
-                        for lr in layers:
-                            cv, dr = lr
-                            if dr and cv != now_canvas and draw_color == UI.background:
-                                cv.draw(screen, area=changed)
+                    now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
+                                      size=(brush_size, brush_size), brush=brush, surface=screen, overlays=overlay_layers)
                     pygame.display.update(now_canvas.get_rectangle())
 
     current_color_indicator.get_item(0, 0).color = draw_color

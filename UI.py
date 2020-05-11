@@ -202,7 +202,7 @@ class Canvas(UIItem):
                         self.table[p_row][p_col].draw(surface)
         self.paint_history.append(history_obj)
 
-    def pixel_paint(self, col, row, color=black, brush=None, size=(1, 1), alpha=None, surface=None):
+    def pixel_paint(self, col, row, color=black, brush=None, size=(1, 1), alpha=None, surface=None, overlays=None):
         row = min(abs(row), self.rows - 1)
         col = min(abs(col), self.cols - 1)
         startrow = max((row - size[1] // 2), 0)
@@ -230,10 +230,16 @@ class Canvas(UIItem):
                         self.table[i][j].color = color
                         if surface:
                             self.table[i][j].draw(surface)
+                        if surface and overlays:
+                            for ov in overlays:
+                                if i in range(0, ov.rows) and j in range(0, ov.cols):
+                                    px = ov.table[i][j]
+                                    if px.color != background:
+                                        px.draw(surface)
             self.paint_history.append(history_obj)
         if len(self.paint_history) > 100:
             self.paint_history.pop(0)
-        return max(0, startrow - 5), max(0, startcol - 5), min(self.rows, endrow + 5), min(self.cols, endcol + 5)
+        #  return max(0, startrow - 1), max(0, startcol - 1), min(self.rows, endrow + 1), min(self.cols, endcol + 1)
 
     def undo(self):
         if self.paint_history:
@@ -253,7 +259,7 @@ class Canvas(UIItem):
             points.append((int(row), int(col)))
         return points
 
-    def line_paint(self, old_mpos, new_mpos, color=black, brush=None, size=(1, 1), alpha=255, surface=None):
+    def line_paint(self, old_mpos, new_mpos, color=black, brush=None, size=(1, 1), alpha=255, surface=None, overlays=None):
         line = self.line(old_mpos, new_mpos)
         if min(size) == 0:
             return
@@ -263,8 +269,7 @@ class Canvas(UIItem):
             step = 1
         for i in range(1, len(line), step):
             row, col = line[i]
-            changed = self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha, surface=surface)
-        return changed
+            self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha, surface=surface, overlays=overlays)
 
     def draw(self, surface, col_override=None, area=None):
         if area:
