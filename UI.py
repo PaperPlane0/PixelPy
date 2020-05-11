@@ -230,7 +230,8 @@ class Canvas(UIItem):
                         self.table[i][j].color = color
                         if surface:
                             self.table[i][j].draw(surface)
-                        if surface and overlays:
+                        print(color)
+                        if surface and overlays and color[:3] == background[:3]:
                             for ov in overlays:
                                 if i in range(0, ov.rows) and j in range(0, ov.cols):
                                     px = ov.table[i][j]
