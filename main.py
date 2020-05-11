@@ -141,6 +141,7 @@ def loop():
                             elif ps == 2:
                                 if draw_canvas:
                                     draw_color = layers[curr_layer][0].bg_col
+                                brush = None
                             elif ps == 3:
                                 brush = canvas_flood_fill
                             paint_tools_tooltip.clicked = button
@@ -154,6 +155,8 @@ def loop():
                         if isinstance(obj, UI.UIButton):
                             selected_layer_button = obj
                             curr_layer = i // 2
+                            if layers[curr_layer][1]:
+                                layers[curr_layer][0].draw(screen)
                             obj.color = UI.gray
                         elif isinstance(obj, UI.UITooltip):
                             visibility_toggle_button = obj.table[0][0]

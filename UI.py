@@ -282,7 +282,7 @@ class Canvas(UIItem):
         draw.rect(surface, black, ((self.x - 1, self.y - 1), (self.width + 2, self.height + 2)), 2)
         for row in self.table:
             for px in row:
-                if px.color != background:
+                if px.color[:3] != background[:3]:
                     px.draw(surface, color_override=col_override)
 
     def clear(self):
