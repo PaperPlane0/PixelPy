@@ -6,6 +6,7 @@ import sys
 pygame.init()
 
 screen_size = (1200, 850)
+screen_w, screen_h = screen_size
 canvas_size = (int(screen_size[0] / 1.2), int(screen_size[1] / 1.2))
 flag = True
 
@@ -47,7 +48,6 @@ current_color_indicator.set_item(0, 0, UI.Rectangle(7, current_color_indicator.y
 cw_icon = pygame.image.load('icons/pick_color.png')
 pick_color_button = UI.UIButton(custom_color_tooltip.width - 10 - current_color_indicator.height, custom_color_tooltip.y + 40, current_color_indicator.height, current_color_indicator.height, image=cw_icon)
 
-
 canv_x = p_square * main_p_c + 40
 canv_args = (canv_x, 2, *canvas_size, canv_r, canv_c)
 
@@ -57,7 +57,7 @@ def new_canvas(in_canv_args):
 
 
 canvas = new_canvas(canv_args)
-size_slider = UI.UISlider(5, 450, 30, 170, min(canv_c // 8, 50), 0, slider_color=UI.red)
+size_slider = UI.UISlider(5, 450, 30, 170, min(canv_c // 8, 50), 1, slider_color=UI.red)
 
 tool_square = 40
 tool_r, tool_c = 4, 3
@@ -85,12 +85,68 @@ draw_color = UI.black
 selected_brush = pygame.image.load('brushes/circle16.png')
 brush = selected_brush
 selected_layer_button = layers_tooltip.get_item(0, 0)
-fr = 0
+
+pick_color_popup_w, pick_color_popup_h = 700, 350
+pick_color_popup = UI.Popup((screen_w - pick_color_popup_w) // 2, (screen_h - pick_color_popup_h) // 2, pick_color_popup_w, pick_color_popup_h,
+                            text=('  Pick a color', UI.black), font=('courier new', 20), title_h=30)
+new_tt_y = pick_color_popup.y + 20
+new_tt_square = 20
+for i, key in enumerate(UI.colors2.keys()):
+    color_lst = UI.colors2[key]
+    new_tt = UI.UITooltip(pick_color_popup.x + 20, new_tt_y, new_tt_square * len(color_lst),
+                          new_tt_square, 1, len(color_lst), title_h=20, font=('arial', 16),
+                          text=(key, UI.black), bg_color=UI.white, border_w=2)
+    pick_color_popup.add_item(new_tt, 20, new_tt_y - pick_color_popup.y + 20, name=f'palette{i}')
+    for j, clr in enumerate(color_lst):
+        new_tt.set_item(0, j, UI.UIButton(0, 0, 20, 20, color=clr))
+    new_tt_y += 60
+
+color_wheel_rect = UI.Rectangle(0, 0, 256, 256, image=pygame.image.load('icons/color_picker.png'), color=None)
+pick_color_popup.add_item(color_wheel_rect, new_tt.width + 80, pick_color_popup_h - color_wheel_rect.height + 12, name='color_wheel')
+old_color_ind = UI.UITooltip(color_wheel_rect.x + 20, color_wheel_rect.y - 84, 54, 64, 1, 1, title_h=20, text=('old', UI.black), font=('arial', 16))
+pick_color_popup.add_item(old_color_ind, 20, -84, name='old_color_ind', reference_element=color_wheel_rect)
+old_color_ind.set_item(0, 0, UI.Rectangle(0, 0, 62, 62, UI.white))
+arrow_rect = UI.Rectangle(0, 0, 64, 64, image=pygame.image.load('icons/arrow_right.png'), color=None)
+pick_color_popup.add_item(arrow_rect, old_color_ind.width + 20, 0, name='arrow', reference_element=old_color_ind)
+new_color_ind = UI.UITooltip(arrow_rect.x + arrow_rect.width + 15, arrow_rect.y, 54, 64, 1, 1, title_h=20, text=('new', UI.black), font=('arial', 16))
+pick_color_popup.add_item(new_color_ind, arrow_rect.width + 15, 0, name='new_color_ind', reference_element=arrow_rect)
+new_color_ind.set_item(0, 0, UI.Rectangle(0, 0, 62, 62, UI.red))
+
+sl_x = 40
+for i, sl_name in enumerate(('R: ', 'G: ', 'B: ')):
+    new_col_slider = UI.UISlider(color_wheel_rect.x + color_wheel_rect.width + sl_x,
+                                 pick_color_popup.y + 20, 30, color_wheel_rect.height,
+                                 255, 0, slider_color=UI.red, bg_color=UI.white, color=(80, 80, 80),
+                                 text=(sl_name, UI.black))
+    pick_color_popup.add_item(new_col_slider, color_wheel_rect.x + color_wheel_rect.width + 30, 20, f'slider{i}')
+    sl_x += 65
+
+ok_button = UI.UIButton(0, 0, 86, 24, color=UI.gray, text=('Ok', UI.black), font=('arial', 18), frame_col=UI.green, frame_w=2)
+pick_color_popup.add_item(ok_button, pick_color_popup_w - ok_button.width - 20, pick_color_popup_h - 15, name='ok_button')
+cancel_button = UI.UIButton(0, 0, 86, 24, color=UI.gray, text=('Cancel', UI.black), font=('arial', 18), frame_col=UI.red, frame_w=2)
+pick_color_popup.add_item(cancel_button, -(cancel_button.width + 20), 0, name='cancel_button', reference_element=ok_button)
+
+ui_elements = [basic_color_tooltip, custom_color_tooltip, paint_tools_tooltip, layers_tooltip, size_slider, canvas,
+               current_color_indicator, pick_color_button, add_layer_button]
+
+
+def draw_layers(layers1, final_layer=-1):
+    if final_layer < 0 or final_layer >= len(layers):
+        final_layer = len(layers1) - 1
+    if layers1:
+        pygame.draw.rect(screen, UI.background, layers1[0][0].get_rectangle())
+        for canv_obj in layers1[:final_layer + 1]:
+            cv, do_draw = canv_obj
+            if do_draw:
+                cv.draw(screen)
+
 
 def setup():
+    global brush
     screen.fill(UI.white)
     canvas.draw(screen)
     pygame.display.flip()
+    brush = selected_brush
 
 
 def loop():
@@ -130,6 +186,7 @@ def loop():
                 for i, row in enumerate(paint_tools_tooltip.table):
                     for j, button in enumerate(row):
                         if button.mouse_down() and isinstance(button, UI.UIButton):
+                            paint_tools_tooltip.selected = button
                             ps = i * paint_tools_tooltip.cols + j
                             if ps == 0:
                                 brush = selected_brush
@@ -151,10 +208,8 @@ def loop():
                         layers_tooltip.clicked = obj
                         if isinstance(obj, UI.UIButton):
                             selected_layer_button = obj
-                            layers[curr_layer][0].hide(screen, True)
                             curr_layer = i // 2
-                            if layers[curr_layer][1]:
-                                layers[curr_layer][0].draw(screen)
+                            draw_layers(layers, curr_layer)
                             obj.color = UI.gray
                             pygame.display.update(layers[curr_layer][0].get_rectangle())
                         elif isinstance(obj, UI.UITooltip):
@@ -162,15 +217,7 @@ def loop():
                             delete_button = obj.table[0][1]
                             if visibility_toggle_button.mouse_down():
                                 layers[i // 2][1] = not layers[i // 2][1]
-                                if not layers[i // 2][1]:
-                                    layers[i // 2][0].hide(screen, True)
-                                    for canv_obj in layers:
-                                        cv, do_draw = canv_obj
-                                        if do_draw:
-                                            cv.draw(screen)
-                                else:
-                                    layers[i // 2][0].draw(screen)
-                                    layers[curr_layer][0].draw(screen)
+                                draw_layers(layers, curr_layer)
                                 pygame.display.update(layers[i // 2][0].get_rectangle())
                                 if layers[i // 2][1]:
                                     visibility_toggle_button.image = pygame.image.load('icons/visible.png')
@@ -194,12 +241,7 @@ def loop():
                                         add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
                                         pygame.display.update(old_add_layer_button_pos)
 
-                                        pygame.draw.rect(screen, UI.background, canvas.get_rectangle())
-
-                                        for canv_obj in layers:
-                                            cv, do_draw = canv_obj
-                                            if do_draw:
-                                                cv.draw(screen)
+                                        draw_layers(layers, curr_layer)
 
                                         pygame.display.update(canvas.get_rectangle())
                                 obj.clicked = delete_button
@@ -218,6 +260,9 @@ def loop():
                 old_add_layer_button_pos = add_layer_button.get_rectangle()
                 add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
                 pygame.display.update(old_add_layer_button_pos)
+            if pick_color_button.mouse_hover():
+                pass
+
 
         if event.type == pygame.MOUSEBUTTONUP:
             if basic_color_tooltip.clicked:
@@ -262,8 +307,9 @@ def loop():
                 if old_mouse_x != mouse_x or old_mouse_y != mouse_y:
                     now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
                                       size=(brush_size, brush_size), brush=brush, surface=screen, overlays=overlay_layers)
+                    pygame.draw.rect(screen, UI.black, ((now_canvas.x - 1, now_canvas.y - 1),
+                                                        (now_canvas.width + 2, now_canvas.height + 2)), 2)
                     pygame.display.update(now_canvas.get_rectangle())
-
     current_color_indicator.get_item(0, 0).color = draw_color
 
     basic_color_tooltip.draw(screen)
@@ -275,7 +321,7 @@ def loop():
     custom_color_tooltip.draw(screen)
     current_color_indicator.draw(screen)
     pick_color_button.draw(screen)
-
+    pick_color_popup.draw(screen)
 
     pygame.display.update(basic_color_tooltip.get_rectangle())
     pygame.display.update(size_slider.get_rectangle())
@@ -284,9 +330,11 @@ def loop():
     pygame.display.update(custom_color_tooltip.get_rectangle())
     pygame.display.update(current_color_indicator.get_rectangle())
     pygame.display.update(pick_color_button.get_rectangle())
-    pygame.display.update((layers_tooltip.x - 5, layers_tooltip.y + layers_tooltip.height, layers_tooltip.width + 10, layers_tooltip.row_size + 20))
+    pygame.display.update((layers_tooltip.x - 5, layers_tooltip.y + layers_tooltip.height,
+                           layers_tooltip.width + 10, layers_tooltip.row_size + 20))
+    pygame.display.update(pick_color_popup.get_rectangle())
     clock.tick(128)
-    print(clock)
+    #print(clock)
 
 
 setup()

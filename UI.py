@@ -41,7 +41,8 @@ colors2 = {'Skins': ([241,157,154],[241,179,164],[246,209,190],[252,225,213],[24
            'Soft Hues': ([128,232,221],[124,194,246],[175,129,228],[231,132,186],[249,193,160],[183,246,175]),
            'Forest': ([100,93,62],[130,123,92],[156,151,115],[86,113,80],[46,71,43],[16,42,10]),
            'Sunset': ([252,120,150],[193,107,188],[152,89,197],[108,66,196],[85,56,193],[30,171,215]),
-           'Coffee': ([92,58,42],[121,84,63],[172,138,104],[200,173,139],[223,213,191],[206,159,85])}
+           'Coffee': ([92,58,42],[121,84,63],[172,138,104],[200,173,139],[223,213,191],[206,159,85]),
+           'Classic': (red, orange, yellow, green, blue, purple)}
 
 background = white
 
@@ -62,14 +63,17 @@ mirror_icon = pygame.image.load('icons/mirror.png')
 icons = [brush_icon, pencil_icon, eraser_icon, fill_icon, color_pick_icon, swap_col_icon, circle_icon, rect_icon, line_icon, rotate_icon, move_icon, mirror_icon]
 draw_tools = {}
 
+
 class UIItem:
-    def __init__(self, x, y, width, height, image=None, color=None, text=('', white), font=('arial', 0)):
+    def __init__(self, x, y, width, height, image=None, color=None, text=('', white), font=('arial', 0), frame_w=0, frame_col=black):
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.image = image
         self.color = color
+        self.frame_w = frame_w
+        self.frame_col = frame_col
         self.text = text[0]
         self.text_col = text[1]
         self.font_name = font[0]
@@ -132,23 +136,23 @@ class UIItem:
             tx = (self.width - text_len) // 2
             ty = (self.height - text_height) // 2
             surface.blit(title, (self.x + tx, self.y + ty))
+        if self.frame_w:
+            self.draw_frame(surface, self.frame_col, self.frame_w)
 
     def hide(self, on, surface):
         if on:
-            self.draw(surface, background)
+            self.draw(surface, color_override=background)
 
 
 class UIButton(UIItem):
-    def __init__(self, x, y, width, height, action=None, image=None, color=None, text=('', white), font=('arial', 0)):
-        super().__init__(x, y, width, height, image=image, color=color, text=text, font=font)
+    def __init__(self, x, y, width, height, action=None, image=None, color=None, text=('', white), font=('arial', 0), frame_w=0, frame_col=black):
+        super().__init__(x, y, width, height, image=image, color=color, text=text, font=font, frame_w=frame_w, frame_col=frame_col)
         self.action = action
+        self.state = False
 
     def onclick(self):
-        if self.mouse_down() and self.action:
-            if isinstance(self.action, funcs.tool):
-                self.action.use()
-            else:
-                return self.action(self)
+        if self.mouse_down():
+            self.state = not self.state
 
 
 class Rectangle(UIItem):
@@ -230,7 +234,7 @@ class Canvas(UIItem):
                         self.table[i][j].color = color
                         if surface:
                             self.table[i][j].draw(surface)
-                        print(color)
+                        #  print(color)
                         if surface and overlays and color[:3] == background[:3]:
                             for ov in overlays:
                                 if i in range(0, ov.rows) and j in range(0, ov.cols):
@@ -320,6 +324,7 @@ class UISlider(UIItem):
         self.slider_y = self.scale_y + self.scale_h - self.slider_r
         self.value = min_v
         self.title = Rectangle(x, y, width + 1, title_h, color=bg_color, image=image, text=text, font=font)
+        self.title.text = self.title.text[:self.title.text.find(' ') + 1] + str(self.value)
 
     def move_slider(self):
         mouse_y = pygame.mouse.get_pos()[1]
@@ -352,33 +357,35 @@ class UISlider(UIItem):
 
 
 class UITooltip(UIItem):
-    def __init__(self, x, y, width, height, rows, cols, color=black, bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0), show_grid=True):
+    def __init__(self, x, y, width, height, rows, cols, color=black, bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0), show_grid=True, border_w=1):
         super().__init__(x, y + title_h, width, height + title_h, color=color)
         self.title_x = x
         self.title_y = y
         self.tinted = None
         self.clicked = None
+        self.selected = None
         self.show_grid = show_grid
         self.rows = rows
         self.cols = cols
         self.title_h = title_h
+        self.border_w = border_w
         self.row_size = height // rows
         self.col_size = width // cols
         rs, cs = self.row_size, self.col_size
         self.title = Rectangle(x, y, width + 1, title_h, color=bg_color, image=image, text=text, font=font)
-        self.table = [[Rectangle((x + 1 + j * cs), (y + title_h + 1 + i * rs), cs - 1, rs - 1, color=background) for j in range(cols)] for i in range(rows)]
+        self.table = [[Rectangle((x + 1 + j * cs), (self.y + 1 + i * rs), cs - 1, rs - 1, color=background) for j in range(cols)] for i in range(rows)]
 
     def draw_grid(self, surface):
-        draw.line(surface, self.color, (self.title_x, self.title_y), (self.title_x + self.width, self.title_y))
-        draw.line(surface, self.color, (self.title_x, self.title_y), (self.title_x, self.y))
-        draw.line(surface, self.color, (self.title_x + self.width, self.title_y), (self.title_x + self.width, self.y))
+        draw.line(surface, self.color, (self.title_x, self.title_y), (self.title_x + self.width, self.title_y), self.border_w)
+        draw.line(surface, self.color, (self.title_x, self.title_y), (self.title_x, self.y), self.border_w)
+        draw.line(surface, self.color, (self.title_x + self.width, self.title_y), (self.title_x + self.width, self.y), self.border_w)
         hor_space, vert_space = self.col_size, self.row_size
         x, y = self.x, self.y
         for i in range(self.rows + 1):
-            draw.line(surface, self.color, (x, y), (x + self.width, y))
+            draw.line(surface, self.color, (x, y), (x + self.width, y), self.border_w)
             y += vert_space
         for i in range(self.cols + 1):
-            draw.line(surface, self.color, (x, self.y), (x, y - self.row_size))
+            draw.line(surface, self.color, (x, self.y), (x, y - self.row_size), self.border_w)
             x += hor_space
 
     def get_rectangle(self):
@@ -391,8 +398,8 @@ class UITooltip(UIItem):
         self.col_size = self.width // self.cols
         for row, line in enumerate(self.table):
             for col, item in enumerate(line):
-                item.height = self.row_size - 3
-                item.width = self.col_size - 3
+                item.height = self.row_size - 4
+                item.width = self.col_size - 4
                 item.x = self.x + 2 + col * self.col_size
                 item.y = self.y + 2 + row * self.row_size
                 if isinstance(item, UITooltip):
@@ -461,16 +468,18 @@ class UITooltip(UIItem):
         self.table[row][col] = item
 
     def draw(self, surface):
-        self.title.draw(surface)
-        if self.show_grid:
-            self.draw_grid(surface)
         for row in self.table:
             for item in row:
                 item.draw(surface)
+        if self.selected:
+            self.selected.draw_frame(surface, red, 3)
+        self.title.draw(surface)
+        if self.show_grid:
+            self.draw_grid(surface)
 
 
 class Popup(UIItem):
-    def __init__(self, x, y, width, height, color=black, starting_items = [], bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0)):
+    def __init__(self, x, y, width, height, color=black, starting_items = {}, bg_color=light_gray, image=None, title_h=0, text=('', black), font=('arial', 0)):
         super().__init__(x, y + title_h, width, height + title_h, color=color)
         self.title_x = x
         self.title_y = y
@@ -482,9 +491,9 @@ class Popup(UIItem):
         self.title_h = title_h
         self.title = Rectangle(x, y, width, title_h, color=bg_color, image=image, text=text, font=font)
 
-    def add_item(self, item, x, y, size = None, reference_element=None):
+    def add_item(self, item, x, y, name='', size = None, reference_element=None):
         if reference_element:
-            if reference_element in self.items:
+            if reference_element in self.items.values():
                 item.x = reference_element.x + x
                 item.y = reference_element.y + y
         else:
@@ -494,14 +503,19 @@ class Popup(UIItem):
             item.width, item.height = size
         else:
             item.width, item.height = min(self.width, item.width), min(self.height, item.height)
-        self.items.append(item)
+        self.items[name] = item
+
+    def get_rectangle(self):
+        return self.x, self.title_y, self.width, self.height + self.title_h
 
     def draw(self, surface, color_override=None):
-        draw.rect(surface, self.bg_color, (self.x, self.title_y, self.width, self.height + self.title_h))
+        draw.rect(surface, self.bg_color, (self.x + 1, self.title_y + 1, self.width - 2, self.height + self.title_h - 2))
         if self.image:
             img = pygame.transform.scale(self.image, (self.width, self.height))
             surface.blit(img)
-        for item in self.items:
+        for item in self.items.values():
             item.draw(surface)
-        draw.rect(surface, self.color, (self.x, self.title_y, self.width, self.height + self.title_h), 2)
+        if self.title:
+            self.title.draw(surface)
+        draw.rect(surface, self.color, (self.x + 1, self.title_y + 1, self.width - 2, self.height + self.title_h - 2), 2)
         draw.line(surface, self.color, (self.x, self.y), (self.x + self.width, self.y), 2)
