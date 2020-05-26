@@ -42,7 +42,7 @@ colors2 = {'Skins': ([241,157,154],[241,179,164],[246,209,190],[252,225,213],[24
            'Forest': ([100,93,62],[130,123,92],[156,151,115],[86,113,80],[46,71,43],[16,42,10]),
            'Sunset': ([252,120,150],[193,107,188],[152,89,197],[108,66,196],[85,56,193],[30,171,215]),
            'Coffee': ([92,58,42],[121,84,63],[172,138,104],[200,173,139],[223,213,191],[206,159,85]),
-           'Classic': (red, orange, yellow, green, blue, purple)}
+           'Classic': ([255, 0, 0], [255, 128, 0], [255, 255, 0], [0, 128, 0], [0, 0, 255], [128, 0, 128])}
 
 background = white
 
@@ -333,7 +333,14 @@ class UISlider(UIItem):
         text = self.title.text
         self.title.text = text[:text.find(' ') + 1] + str(self.value)
 
-    def draw(self, surface):
+    def set_value(self, val):
+        val = funcs.constrain(val, self.min_v, self.max_v)
+        self.value = val
+        self.slider_y = funcs.map_value(val, self.max_v, self.min_v, self.scale_y, self.scale_y + self.scale_h)
+        text = self.title.text
+        self.title.text = text[:text.find(' ') + 1] + str(self.value)
+
+    def draw(self, surface, col_override=None, area=None):
         draw.rect(surface, self.bg_color, ((self.x, self.y), (self.width, self.height)))
         self.title.draw(surface)
         draw.line(surface, self.color, (self.x, self.y), (self.x + self.width, self.y))

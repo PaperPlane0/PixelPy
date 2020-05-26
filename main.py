@@ -47,6 +47,7 @@ current_color_indicator.set_item(0, 0, UI.Rectangle(7, current_color_indicator.y
 
 cw_icon = pygame.image.load('icons/pick_color.png')
 pick_color_button = UI.UIButton(custom_color_tooltip.width - 10 - current_color_indicator.height, custom_color_tooltip.y + 40, current_color_indicator.height, current_color_indicator.height, image=cw_icon)
+pick_color_button.state = False
 
 canv_x = p_square * main_p_c + 40
 canv_args = (canv_x, 2, *canvas_size, canv_r, canv_c)
@@ -114,11 +115,12 @@ new_color_ind.set_item(0, 0, UI.Rectangle(0, 0, 62, 62, UI.red))
 
 sl_x = 40
 for i, sl_name in enumerate(('R: ', 'G: ', 'B: ')):
-    new_col_slider = UI.UISlider(color_wheel_rect.x + color_wheel_rect.width + sl_x,
-                                 pick_color_popup.y + 20, 30, color_wheel_rect.height,
+    new_col_slider = UI.UISlider(new_color_ind.x + new_color_ind.width + sl_x + 20,
+                                 new_color_ind.y, 40, color_wheel_rect.height + 40,
                                  255, 0, slider_color=UI.red, bg_color=UI.white, color=(80, 80, 80),
-                                 text=(sl_name, UI.black))
-    pick_color_popup.add_item(new_col_slider, color_wheel_rect.x + color_wheel_rect.width + 30, 20, f'slider{i}')
+                                 text=(sl_name, UI.black), scale_h=color_wheel_rect.height - 15, title_h=20)
+    pick_color_popup.add_item(new_col_slider, new_color_ind.width + sl_x + 20, 0,
+                              f'slider{i}', reference_element=new_color_ind)
     sl_x += 65
 
 ok_button = UI.UIButton(0, 0, 86, 24, color=UI.gray, text=('Ok', UI.black), font=('arial', 18), frame_col=UI.green, frame_w=2)
@@ -126,8 +128,10 @@ pick_color_popup.add_item(ok_button, pick_color_popup_w - ok_button.width - 20, 
 cancel_button = UI.UIButton(0, 0, 86, 24, color=UI.gray, text=('Cancel', UI.black), font=('arial', 18), frame_col=UI.red, frame_w=2)
 pick_color_popup.add_item(cancel_button, -(cancel_button.width + 20), 0, name='cancel_button', reference_element=ok_button)
 
-ui_elements = [basic_color_tooltip, custom_color_tooltip, paint_tools_tooltip, layers_tooltip, size_slider, canvas,
-               current_color_indicator, pick_color_button, add_layer_button]
+current_popup = None
+
+ui_elements = [basic_color_tooltip, size_slider, paint_tools_tooltip, layers_tooltip, add_layer_button,
+               custom_color_tooltip, current_color_indicator, pick_color_button]
 
 
 def draw_layers(layers1, final_layer=-1):
@@ -159,7 +163,7 @@ def loop():
     global brush
     global curr_layer
     global selected_layer_button
-    global fr
+    global current_popup
 
     pygame.draw.rect(screen, UI.background, (layers_tooltip.x - 5, 0, layers_tooltip.width + 10, add_layer_button.x + 10))
     pygame.draw.rect(screen, UI.background, (paint_tools_tooltip.x - 5, paint_tools_tooltip.y - 5, paint_tools_tooltip.width + 10, paint_tools_tooltip.height + 10))
@@ -172,97 +176,135 @@ def loop():
         if event.type == pygame.KEYDOWN:
             pass
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if basic_color_tooltip.mouse_hover():
-                for row in basic_color_tooltip.table:
-                    for button in row:
-                        if button.mouse_down() and isinstance(button, UI.UIButton):
-                            button.tint(False)
-                            draw_color = button.color
-                            basic_color_tooltip.clicked = button
-                            button.tint(True, amt=20)
-                            break
-
-            if paint_tools_tooltip.mouse_hover():
-                for i, row in enumerate(paint_tools_tooltip.table):
-                    for j, button in enumerate(row):
-                        if button.mouse_down() and isinstance(button, UI.UIButton):
-                            paint_tools_tooltip.selected = button
-                            ps = i * paint_tools_tooltip.cols + j
-                            if ps == 0:
-                                brush = selected_brush
-                            elif ps == 1:
-                                brush = None
-                            elif ps == 2:
-                                if draw_canvas:
-                                    draw_color = layers[curr_layer][0].bg_col
-                                brush = None
-                            elif ps == 3:
-                                brush = canvas_flood_fill
-                            paint_tools_tooltip.clicked = button
-                            button.tint(True, amt=20)
-                            break
-
-            if layers_tooltip.mouse_hover():
-                for i, obj in enumerate([x[0] for x in layers_tooltip.table]):
-                    if obj.mouse_down():
-                        layers_tooltip.clicked = obj
-                        if isinstance(obj, UI.UIButton):
-                            selected_layer_button = obj
-                            curr_layer = i // 2
-                            draw_layers(layers, curr_layer)
-                            obj.color = UI.gray
-                            pygame.display.update(layers[curr_layer][0].get_rectangle())
-                        elif isinstance(obj, UI.UITooltip):
-                            visibility_toggle_button = obj.table[0][0]
-                            delete_button = obj.table[0][1]
-                            if visibility_toggle_button.mouse_down():
-                                layers[i // 2][1] = not layers[i // 2][1]
-                                draw_layers(layers, curr_layer)
-                                pygame.display.update(layers[i // 2][0].get_rectangle())
-                                if layers[i // 2][1]:
-                                    visibility_toggle_button.image = pygame.image.load('icons/visible.png')
-                                else:
-                                    visibility_toggle_button.image = pygame.image.load('icons/invisible.png')
-                                visibility_toggle_button.color = UI.gray
-                                obj.clicked = visibility_toggle_button
-                            elif delete_button.mouse_down():
-                                delete_button.color = UI.gray
-                                if layers:
-                                    if len(layers_tooltip.table) > 2:
-                                        layers_tooltip.pop_item(i - 1, 0)
-                                        layers_tooltip.pop_item(i - 1, 0)
-
-                                        layers.pop((i - 1) // 2)
-                                        curr_layer = min(curr_layer, len(layers) - 1)
-
-                                        selected_layer_button = layers_tooltip.get_item(curr_layer * 2, 0)
-
-                                        old_add_layer_button_pos = add_layer_button.get_rectangle()
-                                        add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
-                                        pygame.display.update(old_add_layer_button_pos)
-
-                                        draw_layers(layers, curr_layer)
-
-                                        pygame.display.update(canvas.get_rectangle())
-                                obj.clicked = delete_button
+            if current_popup is None:
+                if basic_color_tooltip.mouse_hover():
+                    for row in basic_color_tooltip.table:
+                        for button in row:
+                            if button.mouse_down() and isinstance(button, UI.UIButton):
+                                button.tint(False)
+                                draw_color = button.color
+                                basic_color_tooltip.clicked = button
+                                button.tint(True, amt=20)
                                 break
-                        else:
-                            print(obj)
-            if add_layer_button.mouse_hover():
-                layers_tooltip.append_item(UI.UIButton(0, 0, layer_square, layer_square, image=pygame.image.load('icons/default_image.png')))
-                layers_tooltip.append_item(UI.UITooltip(0, 0, int(1.2 * layer_square) - 4, layer_square // 2 - 4, 1, 2, show_grid=False))
-                new_tooltip_element = layers_tooltip.get_item(-1, 0)
-                new_tooltip_element.set_item(0, 0, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/visible.png')))
-                new_tooltip_element.set_item(0, 1, UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/delete.png')))
-                layers.append([new_canvas(canv_args), True])
-                curr_layer += 1
-                layers_tooltip.update_item_sizes()
-                old_add_layer_button_pos = add_layer_button.get_rectangle()
-                add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
-                pygame.display.update(old_add_layer_button_pos)
-            if pick_color_button.mouse_hover():
-                pass
 
+                if paint_tools_tooltip.mouse_hover():
+                    for i, row in enumerate(paint_tools_tooltip.table):
+                        for j, button in enumerate(row):
+                            if button.mouse_down() and isinstance(button, UI.UIButton):
+                                paint_tools_tooltip.selected = button
+                                ps = i * paint_tools_tooltip.cols + j
+                                if ps == 0:
+                                    brush = selected_brush
+                                elif ps == 1:
+                                    brush = None
+                                elif ps == 2:
+                                    if draw_canvas:
+                                        draw_color = layers[curr_layer][0].bg_col
+                                    brush = None
+                                elif ps == 3:
+                                    brush = canvas_flood_fill
+                                paint_tools_tooltip.clicked = button
+                                button.tint(True, amt=20)
+                                break
+
+                if layers_tooltip.mouse_hover():
+                    for obj_i, obj in enumerate([x[0] for x in layers_tooltip.table]):
+                        if obj.mouse_down():
+                            layers_tooltip.clicked = obj
+                            if isinstance(obj, UI.UIButton):
+                                selected_layer_button = obj
+                                curr_layer = obj_i // 2
+                                draw_layers(layers, curr_layer)
+                                obj.color = UI.gray
+                                pygame.display.update(layers[curr_layer][0].get_rectangle())
+                                break
+                            elif isinstance(obj, UI.UITooltip):
+                                visibility_toggle_button = obj.table[0][0]
+                                delete_button = obj.table[0][1]
+                                if visibility_toggle_button.mouse_down():
+                                    layers[obj_i // 2][1] = not layers[obj_i // 2][1]
+                                    draw_layers(layers, curr_layer)
+                                    pygame.display.update(layers[obj_i // 2][0].get_rectangle())
+                                    if layers[obj_i // 2][1]:
+                                        visibility_toggle_button.image = pygame.image.load('icons/visible.png')
+                                    else:
+                                        visibility_toggle_button.image = pygame.image.load('icons/invisible.png')
+                                    visibility_toggle_button.color = UI.gray
+                                    obj.clicked = visibility_toggle_button
+                                elif delete_button.mouse_down():
+                                    delete_button.color = UI.gray
+                                    if layers:
+                                        if len(layers_tooltip.table) > 2:
+                                            layers_tooltip.pop_item(obj_i - 1, 0)
+                                            layers_tooltip.pop_item(obj_i - 1, 0)
+
+                                            layers.pop((obj_i - 1) // 2)
+                                            curr_layer = min(curr_layer, len(layers) - 1)
+
+                                            selected_layer_button = layers_tooltip.get_item(curr_layer * 2, 0)
+
+                                            old_add_layer_button_pos = add_layer_button.get_rectangle()
+                                            add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
+                                            pygame.display.update(old_add_layer_button_pos)
+
+                                            draw_layers(layers, curr_layer)
+
+                                            pygame.display.update(canvas.get_rectangle())
+                                    obj.clicked = delete_button
+                                    break
+                            else:
+                                print(obj)
+                if add_layer_button.mouse_hover():
+                    layers_tooltip.append_item(
+                        UI.UIButton(0, 0, layer_square, layer_square,
+                                    image=pygame.image.load('icons/default_image.png')))
+                    layers_tooltip.append_item(
+                        UI.UITooltip(0, 0, int(1.2 * layer_square) - 4, layer_square // 2 - 4, 1, 2, show_grid=False))
+                    new_tooltip_element = layers_tooltip.get_item(-1, 0)
+                    new_tooltip_element.set_item(0, 0,
+                                                 UI.UIButton(0, 0, 16, 16,
+                                                             image=pygame.image.load('icons/visible.png')))
+                    new_tooltip_element.set_item(0, 1,
+                                                 UI.UIButton(0, 0, 16, 16, image=pygame.image.load('icons/delete.png')))
+                    layers.append([new_canvas(canv_args), True])
+                    curr_layer += 1
+                    layers_tooltip.update_item_sizes()
+                    old_add_layer_button_pos = add_layer_button.get_rectangle()
+                    add_layer_button.x, add_layer_button.y = layers_tooltip.x, layers_tooltip.y + layers_tooltip.height
+                    pygame.display.update(old_add_layer_button_pos)
+                if pick_color_button.mouse_hover():
+                    pick_color_button.onclick()
+                    if pick_color_button.state:
+                        current_popup = pick_color_popup
+                        pick_color_popup.items['old_color_ind'].table[0][0].color = draw_color
+                        pick_color_popup.draw(screen)
+                    pygame.display.update(pick_color_popup.get_rectangle())
+            elif current_popup == pick_color_popup:
+                for key in pick_color_popup.items.keys():
+                    item = pick_color_popup.items[key]
+                    if item.mouse_hover():
+                        if 'palette' in key:
+                            for color_button in item.table[0]:
+                                if color_button.mouse_hover():
+                                    color_button.tint(False)
+                                    pick_color_popup.items['new_color_ind'].table[0][0].color = color_button.color
+                                    r, g, b = color_button.color
+                                    pick_color_popup.items['slider0'].set_value(r)
+                                    pick_color_popup.items['slider1'].set_value(g)
+                                    pick_color_popup.items['slider2'].set_value(b)
+                                    color_button.tint(True, amt=20)
+                                    item.clicked = color_button
+                        elif 'color_wheel' in key:
+                            c_w = pick_color_popup.items[key]
+                            new_clr = list(c_w.image.get_at((mouse_x - c_w.x, mouse_y - c_w.y)))[:3]
+                            pick_color_popup.items['new_color_ind'].table[0][0].color = new_clr
+                        elif 'ok_button' in key or 'cancel_button' in key:
+                            if 'ok_button' in key:
+                                draw_color = pick_color_popup.items['new_color_ind'].table[0][0].color
+                            screen.fill(UI.white)
+                            draw_layers(layers, curr_layer)
+                            pygame.display.flip()
+                            current_popup = None
 
         if event.type == pygame.MOUSEBUTTONUP:
             if basic_color_tooltip.clicked:
@@ -278,6 +320,12 @@ def loop():
                         layers_tooltip.clicked.clicked = None
                 else:
                     layers_tooltip.clicked.tint(False)
+            if current_popup == pick_color_popup:
+                for key in pick_color_popup.items.keys():
+                    if 'palette' in key:
+                        if pick_color_popup.items[key].clicked:
+                            pick_color_popup.items[key].clicked.tint(False)
+                            pick_color_popup.items[key].clicked = None
 
         if event.type == pygame.MOUSEMOTION:
             old_mouse_x, old_mouse_y = mouse_x, mouse_y
@@ -294,11 +342,22 @@ def loop():
                 basic_color_tooltip.tinted = None
             if size_slider.mouse_down():
                 size_slider.move_slider()
+            if current_popup == pick_color_popup:
+                for key in pick_color_popup.items.keys():
+                    if 'palette' in key:
+                        for obj in pick_color_popup.items[key].table[0]:
+                            obj.tint(obj.mouse_hover())
+                    elif 'slider' in key:
+                        sl = pick_color_popup.items[key]
+                        if sl.mouse_down():
+                            sl.move_slider()
+                            new_clr = [pick_color_popup.items[key].value for key in pick_color_popup.items.keys() if 'slider' in key]
+                            pick_color_popup.items['new_color_ind'].table[0][0].color = new_clr
 
     if not layers:
         draw_canvas = False
 
-    if draw_canvas:
+    if draw_canvas and current_popup is None:
         now_canvas, do_draw = layers[curr_layer]
         overlay_layers = [x[0] for x in layers if x[0] != now_canvas and x[1]]
         if do_draw:
@@ -312,27 +371,20 @@ def loop():
                     pygame.display.update(now_canvas.get_rectangle())
     current_color_indicator.get_item(0, 0).color = draw_color
 
-    basic_color_tooltip.draw(screen)
-    size_slider.draw(screen)
-    paint_tools_tooltip.draw(screen)
-    layers_tooltip.draw(screen)
-    selected_layer_button.draw_frame(screen, UI.red, width=5)
-    add_layer_button.draw(screen)
-    custom_color_tooltip.draw(screen)
-    current_color_indicator.draw(screen)
-    pick_color_button.draw(screen)
-    pick_color_popup.draw(screen)
+    for el in ui_elements:
+        el.draw(screen)
 
-    pygame.display.update(basic_color_tooltip.get_rectangle())
-    pygame.display.update(size_slider.get_rectangle())
-    pygame.display.update(paint_tools_tooltip.get_rectangle())
-    pygame.display.update(layers_tooltip.get_rectangle())
-    pygame.display.update(custom_color_tooltip.get_rectangle())
-    pygame.display.update(current_color_indicator.get_rectangle())
-    pygame.display.update(pick_color_button.get_rectangle())
+    selected_layer_button.draw_frame(screen, UI.red, width=5)
+
+    for el in ui_elements:
+        pygame.display.update(el.get_rectangle())
+
+    if current_popup is not None:
+        current_popup.draw(screen)
+        pygame.display.update(current_popup.get_rectangle())
+
     pygame.display.update((layers_tooltip.x - 5, layers_tooltip.y + layers_tooltip.height,
                            layers_tooltip.width + 10, layers_tooltip.row_size + 20))
-    pygame.display.update(pick_color_popup.get_rectangle())
     clock.tick(128)
     #print(clock)
 
