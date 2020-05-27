@@ -176,6 +176,16 @@ def loop():
         if event.type == pygame.KEYDOWN:
             pass
         if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 4 and layers[curr_layer][1]:
+                    layers[curr_layer][0].scale(-1, mouse_x, mouse_y)
+                    layers[curr_layer][0].hide(screen, True)
+                    draw_layers(layers, curr_layer)
+                    pygame.display.update(layers[curr_layer][0].get_rectangle())
+            if event.button == 5 and layers[curr_layer][1]:
+                    layers[curr_layer][0].scale(1, mouse_x, mouse_y)
+                    layers[curr_layer][0].hide(screen, True)
+                    draw_layers(layers, curr_layer)
+                    pygame.display.update(layers[curr_layer][0].get_rectangle())
             if current_popup is None:
                 if basic_color_tooltip.mouse_hover():
                     for row in basic_color_tooltip.table:
@@ -254,6 +264,7 @@ def loop():
                                     break
                             else:
                                 print(obj)
+
                 if add_layer_button.mouse_hover():
                     layers_tooltip.append_item(
                         UI.UIButton(0, 0, layer_square, layer_square,
@@ -279,6 +290,14 @@ def loop():
                         pick_color_popup.items['old_color_ind'].table[0][0].color = draw_color
                         pick_color_popup.draw(screen)
                     pygame.display.update(pick_color_popup.get_rectangle())
+                if custom_color_tooltip.mouse_hover():
+                    for item in custom_color_tooltip.table[0]:
+                        if item.mouse_down():
+                            draw_color = item.color
+                            item.tint(True, amt=20)
+                            custom_color_tooltip.clicked = item
+                            custom_color_tooltip.selected = item
+
             elif current_popup == pick_color_popup:
                 for key in pick_color_popup.items.keys():
                     item = pick_color_popup.items[key]
@@ -301,6 +320,9 @@ def loop():
                         elif 'ok_button' in key or 'cancel_button' in key:
                             if 'ok_button' in key:
                                 draw_color = pick_color_popup.items['new_color_ind'].table[0][0].color
+                                if custom_color_tooltip.selected:
+                                    custom_color_tooltip.selected.color = draw_color
+                                    custom_color_tooltip.selected.old_color = draw_color
                             screen.fill(UI.white)
                             draw_layers(layers, curr_layer)
                             pygame.display.flip()
@@ -313,6 +335,9 @@ def loop():
             if paint_tools_tooltip.clicked:
                 paint_tools_tooltip.clicked.tint(False)
                 paint_tools_tooltip.clicked = None
+            if custom_color_tooltip.clicked:
+                custom_color_tooltip.clicked.tint(False)
+                custom_color_tooltip.clicked = None
             if layers_tooltip.clicked:
                 if isinstance(layers_tooltip.clicked, UI.UITooltip):
                     if layers_tooltip.clicked.clicked:
@@ -353,6 +378,11 @@ def loop():
                             sl.move_slider()
                             new_clr = [pick_color_popup.items[key].value for key in pick_color_popup.items.keys() if 'slider' in key]
                             pick_color_popup.items['new_color_ind'].table[0][0].color = new_clr
+            if pygame.mouse.get_pressed()[1] and layers[curr_layer][1]:
+                layers[curr_layer][0].pan(mouse_x - old_mouse_x, mouse_y - old_mouse_y)
+                layers[curr_layer][0].hide(screen, True)
+                draw_layers(layers, curr_layer)
+                pygame.display.update(layers[curr_layer][0].get_rectangle())
 
     if not layers:
         draw_canvas = False
@@ -366,8 +396,6 @@ def loop():
                 if old_mouse_x != mouse_x or old_mouse_y != mouse_y:
                     now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
                                       size=(brush_size, brush_size), brush=brush, surface=screen, overlays=overlay_layers)
-                    pygame.draw.rect(screen, UI.black, ((now_canvas.x - 1, now_canvas.y - 1),
-                                                        (now_canvas.width + 2, now_canvas.height + 2)), 2)
                     pygame.display.update(now_canvas.get_rectangle())
     current_color_indicator.get_item(0, 0).color = draw_color
 

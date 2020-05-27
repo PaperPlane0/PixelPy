@@ -37,15 +37,14 @@ colors = [[0, 0, 0], [24,24,24], [48,48,48], [64,64,64], [128,128,128],[155,155,
            [110,44,0],[135,54,0],[160,64,0],[211,84,0],[220,118,51],[229,152,102],[237,187,153],[246,221,204]
            ]
 
-colors2 = {'Skins': ([241,157,154],[241,179,164],[246,209,190],[252,225,213],[242,193,173],[241,175,153]),
-           'Soft Hues': ([128,232,221],[124,194,246],[175,129,228],[231,132,186],[249,193,160],[183,246,175]),
-           'Forest': ([100,93,62],[130,123,92],[156,151,115],[86,113,80],[46,71,43],[16,42,10]),
-           'Sunset': ([252,120,150],[193,107,188],[152,89,197],[108,66,196],[85,56,193],[30,171,215]),
+colors2 = {'Skins': ([111, 62, 33], [137, 59, 47], [191, 125, 84],[235, 182, 156],[248, 206, 176], [240, 216, 156]),
+           'Summer': ([2,151,157],[114,227,209],[255,231,209], [247,200,48], [255,184,140],[231,151,150]),
+           'Sunset': ([233, 175, 105], [252,120,150],[193,107,188],[152,89,197],[108,66,196],[30,171,215]),
+           'Forest': ([150,79,27], [218,148,50], [211,222,146], [178, 164, 17], [75, 116, 47], [92,107,40]),
            'Coffee': ([92,58,42],[121,84,63],[172,138,104],[200,173,139],[223,213,191],[206,159,85]),
-           'Classic': ([255, 0, 0], [255, 128, 0], [255, 255, 0], [0, 128, 0], [0, 0, 255], [128, 0, 128])}
+           '4 bit': ([255, 0, 0], [255, 128, 0], [255, 255, 0], [0, 128, 0], [0, 0, 255], [128, 0, 128])}
 
 background = white
-
 draw = pygame.draw
 
 brush_icon = pygame.image.load('icons/brush.png')
@@ -166,6 +165,8 @@ class Canvas(UIItem):
         super().__init__(x, y, width, height)
         self.rows = rows
         self.cols = cols
+        self.x_offset = 0
+        self.y_offset = 0
         self.row_size = height // rows
         self.col_size = width // cols
         self.paint_history = []
@@ -265,6 +266,8 @@ class Canvas(UIItem):
         return points
 
     def line_paint(self, old_mpos, new_mpos, color=black, brush=None, size=(1, 1), alpha=255, surface=None, overlays=None):
+        old_mpos = old_mpos[0] - self.x_offset, old_mpos[1] - self.y_offset
+        new_mpos = new_mpos[0] - self.x_offset, new_mpos[1] - self.y_offset
         line = self.line(old_mpos, new_mpos)
         if min(size) == 0:
             return
@@ -283,11 +286,67 @@ class Canvas(UIItem):
                 for j in range(startcol, endcol + 1):
                     self.table[i][j].draw(surface)
             return
-        draw.rect(surface, black, ((self.x - 1, self.y - 1), (self.width + 2, self.height + 2)), 2)
-        for row in self.table:
-            for px in row:
-                if px.color[:3] != background[:3]:
-                    px.draw(surface, color_override=col_override)
+        draw.rect(surface, background, ((max(self.x - self.col_size, 0), max(self.y - self.row_size, 0)),
+                                        (self.width + self.col_size * 2, self.height + self.row_size * 2)), max(1, min(self.row_size, self.col_size)) // 2)
+        for row_i, row in enumerate(self.table):
+            if self.height >= self.y_offset + row_i * self.row_size >= -self.row_size:
+                for col_i, px in enumerate(row):
+                    if self.width >= self.x_offset + col_i * self.col_size >= -self.col_size:
+                        if px.color[:3] != background[:3]:
+                            px.draw(surface, color_override=col_override)
+        x_frame_pos, y_frame_pos = max(self.x, self.x + self.x_offset), max(self.y, self.y + self.y_offset)
+        draw.rect(surface, black, (x_frame_pos, y_frame_pos, self.cols * self.col_size, self.rows * self.row_size), 1)
+        draw.rect(surface, black, ((self.x - 2, self.y - 2), (self.width + 4, self.height + 4)), 2)
+
+    def pan(self, dx, dy):
+        if self.col_size * self.cols < self.width and (self.x_offset + dx < 0 or self.x_offset + self.col_size * self.cols > self.width):
+            self.x_offset = funcs.constrain(self.x_offset, 0, self.width - self.cols * self.col_size)
+            return
+        if self.row_size * self.rows < self.height and (self.y_offset < 0 or self.y_offset + self.row_size * self.rows > self.height):
+            self.y_offset = funcs.constrain(self.y_offset, 0, self.height - self.rows * self.row_size)
+            return
+        self.x_offset += dx
+        self.y_offset += dy
+        x, y = self.x + self.x_offset, self.y + self.y_offset
+        self.table = [[Rectangle((i * self.col_size + x), (j * self.row_size + y),
+                                self.col_size, self.row_size, color=self.table[j][i].color)
+                       for i in range(self.cols)] for j in range(self.rows)]
+
+
+    def scale(self, amt, mouse_x, mouse_y):
+        mouse_x = funcs.constrain(mouse_x, self.x + self.x_offset + 1, self.x + self.x_offset + self.cols * self.col_size - 1)
+        mouse_y = funcs.constrain(mouse_y, self.y + self.y_offset + 1, self.y + self.y_offset + self.rows * self.row_size - 1)
+        if self.row_size + amt < 1 or self.col_size + amt < 1:
+            return
+        if self.row_size + amt > self.height // 20 or self.col_size + amt > self.width // 20:
+            return
+        row_before_zoom, col_before_zoom = funcs.grid_snap(mouse_x, mouse_y,
+                                                              self.x + self.x_offset, self.y + self.y_offset,
+                                                              self.row_size, self.col_size)
+        mouse_x_rel = (mouse_x - self.table[row_before_zoom][col_before_zoom].x) / self.col_size
+        mouse_y_rel = (mouse_y - self.table[row_before_zoom][col_before_zoom].y) / self.row_size
+        self.col_size += amt
+        self.row_size += amt
+        x, y = self.x + self.x_offset, self.y + self.y_offset
+        self.table = [[Rectangle((i * self.col_size + x), (j * self.row_size + y),
+                                 self.col_size, self.row_size, color=self.table[j][i].color)
+                       for i in range(self.cols)] for j in range(self.rows)]
+        if self.row_size * self.rows == self.height and self.col_size * self.cols == self.width:
+            self.pan(-self.x_offset, -self.y_offset)
+            return
+        row_after_zoom, col_after_zoom = funcs.grid_snap(mouse_x, mouse_y,
+                                                         self.x + self.x_offset, self.y + self.y_offset,
+                                                         self.row_size, self.col_size)
+        row_after_zoom = funcs.constrain(row_after_zoom, 0, self.rows - 1)
+        col_after_zoom = funcs.constrain(col_after_zoom, 0, self.cols - 1)
+        d_mouse_x = (mouse_x - self.table[row_after_zoom][col_after_zoom].x)
+        d_mouse_y = (mouse_y - self.table[row_after_zoom][col_after_zoom].y)
+        needed_mouse_x = int(self.table[row_after_zoom][col_after_zoom].width * mouse_x_rel)
+        needed_mouse_y = int(self.table[row_after_zoom][col_after_zoom].height * mouse_y_rel)
+        dmx, dmy = d_mouse_x - needed_mouse_x, d_mouse_y - needed_mouse_y
+        dr, dc = row_after_zoom - row_before_zoom, col_after_zoom - col_before_zoom
+        dy, dx = dr * self.row_size + dmy, dc * self.col_size + dmx
+        self.pan(dx, dy)
 
     def clear(self):
         for row in self.table:
@@ -297,7 +356,7 @@ class Canvas(UIItem):
 
     def hide(self, surface, on):
         if on:
-            self.draw(surface, col_override=background)
+            draw.rect(surface, background, (self.x, self.y, self.width, self.height))
 
 
 class UISlider(UIItem):
