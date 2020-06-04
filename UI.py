@@ -1,6 +1,10 @@
 import pygame
 import funcs
 
+NO_DRAW = -1
+LASSO = 1
+MOVE_TOOL = 2
+
 aqua = (0, 255, 255, 0)   # морская волна
 black = (0, 0, 0, 0)   # черный
 blue = (0, 0, 255, 0)   # синий
@@ -59,7 +63,9 @@ rotate_icon = pygame.image.load('icons/rotate.png')
 move_icon = pygame.image.load('icons/move.png')
 line_icon = pygame.image.load('icons/line.png')
 mirror_icon = pygame.image.load('icons/mirror.png')
-icons = [brush_icon, pencil_icon, eraser_icon, fill_icon, color_pick_icon, swap_col_icon, circle_icon, rect_icon, line_icon, rotate_icon, move_icon, mirror_icon]
+lasso_icon = pygame.image.load('icons/lasso.png')
+icons = [brush_icon, pencil_icon, eraser_icon, fill_icon, color_pick_icon, swap_col_icon, circle_icon, rect_icon,
+         line_icon, lasso_icon, rotate_icon, move_icon, mirror_icon]
 draw_tools = {}
 
 
@@ -160,6 +166,41 @@ class Rectangle(UIItem):
         self.neighbors = []
 
 
+    def draw_border(self, surface, up=False, bottom=False, left=False, right=False, color=red):
+        if up:
+            pygame.draw.line(surface, color, (self.x, self.y), (self.x + self.width, self.y), 1)
+        if right:
+            pygame.draw.line(surface, color, (self.x + self.width, self.y), (self.x + self.width, self.y + self.height), 1)
+        if bottom:
+            pygame.draw.line(surface, color, (self.x, self.y + self.height), (self.x + self.width, self.y + self.height), 1)
+        if left:
+            pygame.draw.line(surface, color, (self.x, self.y), (self.x, self.y + self.height), 1)
+
+    def draw_set_borders(self, surface, in_set):
+        if not self.neighbors:
+            return
+        if self not in in_set:
+            return
+        up, bottom, left, right = False, False, False, False
+        for i, neighbor in enumerate(self.neighbors):
+            if i == 0:
+                up = neighbor not in in_set
+            if i == 1:
+                bottom = neighbor not in in_set
+            if i == 2:
+                left = neighbor not in in_set
+            if i == 3:
+                right = neighbor not in in_set
+        self.draw_border(surface, up=up, bottom=bottom, left=left, right=right)
+
+    def get_rc(self, canvas):
+        for r, row in enumerate(canvas.table):
+            for c, px in enumerate(row):
+                if px == self:
+                    return r, c
+
+
+
 class Canvas(UIItem):
     def __init__(self, x, y, width, height, rows, cols, bg_col=white):
         super().__init__(x, y, width, height)
@@ -167,6 +208,9 @@ class Canvas(UIItem):
         self.cols = cols
         self.x_offset = 0
         self.y_offset = 0
+        self.lasso_clear_flag = False
+        self.selected_pixel_set = []
+        self.old_selected_set = []
         self.row_size = height // rows
         self.col_size = width // cols
         self.paint_history = []
@@ -206,6 +250,19 @@ class Canvas(UIItem):
                     if surface:
                         self.table[p_row][p_col].draw(surface)
         self.paint_history.append(history_obj)
+
+    def lasso_selection(self):
+        to_select = []
+        for row in self.table:
+            start, end = -1, 0
+            for i, px in enumerate(row):
+                if px in self.selected_pixel_set:
+                    if start == -1:
+                        start = i
+                    else:
+                        end = i
+            to_select += row[start:end+1]
+        self.selected_pixel_set = to_select
 
     def pixel_paint(self, col, row, color=black, brush=None, size=(1, 1), alpha=None, surface=None, overlays=None):
         row = min(abs(row), self.rows - 1)
@@ -265,7 +322,34 @@ class Canvas(UIItem):
             points.append((int(row), int(col)))
         return points
 
+    def show_selected_set(self, surface):
+        if self.old_selected_set:
+            for px in self.old_selected_set:
+                px.draw_border(surface, up=True, bottom=True, right=True, left=True, color=white)
+            self.old_selected_set = []
+        for px in self.selected_pixel_set:
+            px.draw(surface)
+            px.draw_set_borders(surface, self.selected_pixel_set)
+
+    def get_at_mouse_pos(self, mouse_x, mouse_y):
+        mouse_x, mouse_y = mouse_x - self.x_offset, mouse_y - self.y_offset
+        row, col = funcs.grid_snap(mouse_x, mouse_y, self.x, self.y, self.row_size, self.col_size)
+        return self.table[row][col]
+
     def line_paint(self, old_mpos, new_mpos, color=black, brush=None, size=(1, 1), alpha=255, surface=None, overlays=None):
+        if brush == NO_DRAW:
+            return
+        if brush == MOVE_TOOL:
+            old_r, old_c = funcs.grid_snap(*old_mpos, self.x + self.x_offset,
+                                           self.y + self.y_offset, self.row_size, self.col_size)
+            new_r, new_c = funcs.grid_snap(*new_mpos, self.x + self.x_offset, self.y + self.y_offset, self.row_size,
+                                           self.col_size)
+            dr, dc = new_r - old_r, new_c - old_c
+            funcs.move_selected_pixels(self, dr, dc)
+        if brush == LASSO and self.lasso_clear_flag:
+            self.old_selected_set = self.selected_pixel_set
+            self.selected_pixel_set = []
+            self.lasso_clear_flag = False
         old_mpos = old_mpos[0] - self.x_offset, old_mpos[1] - self.y_offset
         new_mpos = new_mpos[0] - self.x_offset, new_mpos[1] - self.y_offset
         line = self.line(old_mpos, new_mpos)
@@ -277,6 +361,9 @@ class Canvas(UIItem):
             step = 1
         for i in range(1, len(line), step):
             row, col = line[i]
+            if brush == LASSO:
+                if self.table[row][col] not in self.selected_pixel_set:
+                    self.selected_pixel_set.append(self.table[row][col])
             self.pixel_paint(col, row, color=color, size=size, brush=brush, alpha=alpha, surface=surface, overlays=overlays)
 
     def draw(self, surface, col_override=None, area=None):
@@ -294,6 +381,8 @@ class Canvas(UIItem):
                     if self.width >= self.x_offset + col_i * self.col_size >= -self.col_size:
                         if px.color[:3] != background[:3]:
                             px.draw(surface, color_override=col_override)
+                        if px in self.selected_pixel_set:
+                            px.draw_set_borders(surface, self.selected_pixel_set)
         x_frame_pos, y_frame_pos = max(self.x, self.x + self.x_offset), max(self.y, self.y + self.y_offset)
         draw.rect(surface, black, (x_frame_pos, y_frame_pos, self.cols * self.col_size, self.rows * self.row_size), 1)
         draw.rect(surface, black, ((self.x - 2, self.y - 2), (self.width + 4, self.height + 4)), 2)

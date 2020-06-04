@@ -1,6 +1,5 @@
 import pygame
 
-
 def get_avg(pixel):
     return sum(pixel) / 3
 
@@ -86,3 +85,27 @@ def constrain(val, minv, maxv):
 
 def map_value(val, val_min, val_max, out_min, out_max):
     return (val - val_min) * (out_max - out_min) // (val_max - val_min) + out_min
+
+
+def move_selected_pixels(canvas, dr, dc):
+    history_obj = []
+    px_positions = {}
+    for px in canvas.selected_pixel_set:
+        px_positions[px] = px.get_rc(canvas)
+    r_ok = max([x[0] for x in px_positions.values()]) + dr < canvas.rows and min([x[0] for x in px_positions.values()]) + dr >= 0
+    c_ok = max([x[1] for x in px_positions.values()]) + dc < canvas.cols and min([x[1] for x in px_positions.values()]) + dc >= 0
+    if r_ok and c_ok:
+        recolor = {}
+        new_selection = []
+        for px in px_positions.keys():
+            r, c = px_positions[px]
+            recolor[(r + dr, c + dc)] = px.color
+            history_obj.append({px: px.color})
+            px.color = (255, 255, 255)
+        for new_pos in recolor.keys():
+            r, c = new_pos
+            history_obj.append({canvas.table[r][c]: canvas.table[r][c].color})
+            canvas.table[r][c].color = recolor[new_pos]
+            new_selection.append(canvas.table[r][c])
+        canvas.selected_pixel_set = new_selection
+    return history_obj

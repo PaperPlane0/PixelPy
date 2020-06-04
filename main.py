@@ -1,6 +1,7 @@
 import pygame
 import UI
 from funcs import canvas_flood_fill
+import funcs
 import sys
 
 pygame.init()
@@ -14,7 +15,7 @@ flag = True
 screen = pygame.display.set_mode(screen_size, 0, 16, pygame.HWACCEL)
 clock = pygame.time.Clock()
 
-canv_c, canv_r = 128, 128
+canv_c, canv_r = 64, 64
 canvas_keep_ratio = True
 canvas_keep_rc = True
 canv_px_w = canvas_size[0] // canv_c
@@ -49,28 +50,23 @@ cw_icon = pygame.image.load('icons/pick_color.png')
 pick_color_button = UI.UIButton(custom_color_tooltip.width - 10 - current_color_indicator.height, custom_color_tooltip.y + 40, current_color_indicator.height, current_color_indicator.height, image=cw_icon)
 pick_color_button.state = False
 
-canv_x = p_square * main_p_c + 40
-canv_args = (canv_x, 2, *canvas_size, canv_r, canv_c)
-
 
 def new_canvas(in_canv_args):
     return UI.Canvas(*in_canv_args)
 
 
-canvas = new_canvas(canv_args)
 size_slider = UI.UISlider(5, 450, 30, 170, min(canv_c // 8, 50), 1, slider_color=UI.red)
 
 tool_square = 40
-tool_r, tool_c = 4, 3
+tool_r, tool_c = 4, 4
 paint_tools_tooltip = UI.UITooltip(size_slider.x + size_slider.width + 10, 450, tool_square * tool_c, tool_square * tool_r, tool_r, tool_c, title_h=p_title_h, text=('Tools', UI.black), font=('arial', 15))
 
 for i, item in enumerate(UI.icons):
     paint_tools_tooltip.set_item(i // paint_tools_tooltip.cols, i % paint_tools_tooltip.cols, UI.UIButton(0, 0, 24, 24, image=item))
 
-layers = [[canvas, True]]
 curr_layer = 0
 layer_square = 80
-layers_tooltip = UI.UITooltip(canvas_size[0] + canv_x + 20, 2, int(layer_square * 1.2), layer_square, 2, 1, title_h=p_title_h, text=('Layers', UI.black), font=('arial', 15))
+layers_tooltip = UI.UITooltip(screen_w - layer_square - 40, 2, int(layer_square * 1.2), layer_square, 2, 1, title_h=p_title_h, text=('Layers', UI.black), font=('arial', 15))
 
 layers_tooltip.set_item(0, 0, UI.UIButton(0, 0, layer_square, layer_square, image=pygame.image.load('icons/default_image.png')))
 layers_tooltip.set_item(1, 0, UI.UITooltip(0, 0, int(1.2 * layer_square) - 4, layer_square // 2 - 4, 1, 2, show_grid=False))
@@ -133,6 +129,14 @@ current_popup = None
 ui_elements = [basic_color_tooltip, size_slider, paint_tools_tooltip, layers_tooltip, add_layer_button,
                custom_color_tooltip, current_color_indicator, pick_color_button]
 
+
+canv_x = max(paint_tools_tooltip.x + paint_tools_tooltip.width, basic_color_tooltip.x + basic_color_tooltip.width)
+canv_padding = (layers_tooltip.x - canv_x - canv_c * canv_px_w) // 2
+canv_x += canv_padding
+canv_args = (canv_x, 2, *canvas_size, canv_r, canv_c)
+canvas = new_canvas(canv_args)
+layers = [[canvas, True]]
+selected_tool = None
 
 def draw_layers(layers1, final_layer=-1):
     if final_layer < 0 or final_layer >= len(layers):
@@ -205,14 +209,18 @@ def loop():
                                 ps = i * paint_tools_tooltip.cols + j
                                 if ps == 0:
                                     brush = selected_brush
-                                elif ps == 1:
+                                if ps == 1:
                                     brush = None
-                                elif ps == 2:
+                                if ps == 2:
                                     if draw_canvas:
                                         draw_color = layers[curr_layer][0].bg_col
                                     brush = None
-                                elif ps == 3:
+                                if ps == 3:
                                     brush = canvas_flood_fill
+                                if ps == 9:
+                                    brush = UI.LASSO
+                                if ps == 11:
+                                    brush = UI.MOVE_TOOL
                                 paint_tools_tooltip.clicked = button
                                 button.tint(True, amt=20)
                                 break
@@ -396,7 +404,18 @@ def loop():
                 if old_mouse_x != mouse_x or old_mouse_y != mouse_y:
                     now_canvas.line_paint((old_mouse_x, old_mouse_y), (mouse_x, mouse_y), color=draw_color,
                                       size=(brush_size, brush_size), brush=brush, surface=screen, overlays=overlay_layers)
-                    pygame.display.update(now_canvas.get_rectangle())
+                    if brush in [UI.LASSO, UI.MOVE_TOOL]:
+                        now_canvas.show_selected_set(screen)
+                    if brush in [UI.MOVE_TOOL]:
+                        now_canvas.hide(screen, True)
+                        now_canvas.draw(screen)
+            else:
+                if brush in [UI.LASSO]:
+                    if now_canvas.selected_pixel_set:
+                        layers[curr_layer][0].lasso_selection()
+                        now_canvas.show_selected_set(screen)
+                    now_canvas.lasso_clear_flag = True
+            pygame.display.update(now_canvas.get_rectangle())
     current_color_indicator.get_item(0, 0).color = draw_color
 
     for el in ui_elements:
